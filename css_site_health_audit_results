@@ -1,0 +1,298 @@
+<form version="1.1">
+  <label>CS: Site Health Audit Results</label>
+  <fieldset submitButton="false">
+    <input type="dropdown" token="site_id">
+      <label>Select Site</label>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>site_id</fieldForValue>
+      <search>
+        <query>|inputlookup css_tailscale_connection_info.csv
+|eval label=site_id.": ".customer
+|dedup site_id
+|table site_id, customer, label
+|sort site_id ASC</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+    <input type="time" token="time_filter">
+      <label></label>
+      <default>
+        <earliest>-20m@m</earliest>
+        <latest>now</latest>
+      </default>
+    </input>
+  </fieldset>
+  <row>
+    <panel id="header_controller">
+      <html>
+                <style>
+                    #header_controller .panel-body.html {
+                        background-color: #D8F6B4;
+                    }
+                </style>
+                <h1 style="color:black;">MC Health</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Inbound Connection Information</title>
+        <search>
+          <query>|inputlookup inbound_connection.csv
+|search site_id=$site_id$
+|table site_id, customer, ip_address, platform_version, port, status, time</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Last Site Health Audit (Device List Values Ansible Script)</title>
+        <search>
+          <query>index="lambda_automation" source="css_auto_hardware_health_mc"
+|search site_id=$site_id$
+|dedup site_id
+|table timestamp</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Tailscale Connection Information</title>
+        <search>
+          <query>|inputlookup css_tailscale_connection_info.csv
+|search site_id=$site_id$</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>MC Tier and Uptime</title>
+        <search>
+          <query>index="lambda_automation" source="css_auto_hardware_health_mc" site_id=$site_id$
+|dedup site_id
+| table record_id, id, dev, type, mode, mcTier, ipaddr, platform_version, systemTime_epoch, smcStatus, hasSmartProtect, intelligence_version, smc_version, platformRestartCycle, CPU_idle, cpu, isSmonRunning, operatingSystem, lastRestartTime, current_time, uptime, user_count, load_1_min, load_5_mins, load_15_mins, customer, site_id, timestamp</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Network Configuration</title>
+        <search>
+          <query>|inputlookup css_auto_hardware_health_network_latest.csv
+|search site_id=$site_id$
+|table interface, ip_address, macAddress</query>
+          <earliest>$time_filter.earliest$</earliest>
+          <latest>$time_filter.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Platform Health Checks</title>
+        <search>
+          <query>index="lambda_automation" source="css_auto_platform_health_gen"
+|search site_id=$site_id$
+|dedup site_id 
+|table site_id, customer_log_exists, intelligence_running, restarscript_exists, is_viewfetcher_working
+
+|join type=left site_id [search index="lambda_automation" source="css_auto_platform_health_genconfig"
+|search site_id=$site_id$
+|dedup site_id
+|rename issues_count as gen_config_issue_count
+|table gen_config_issue_count, issues, site_id]
+
+|table customer_log_exists, intelligence_running, restarscript_exists, is_viewfetcher_working, gen_config_issue_count, issues</query>
+          <earliest>$time_filter.earliest$</earliest>
+          <latest>$time_filter.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Intelligence Checks</title>
+        <search>
+          <query>index="lambda_automation" source="css_auto_platform_health_intelligence"
+|search site_id=$site_id$
+|dedup site_id
+|table systemTime, solelev, has3DM, solaz, version, in_error_state, is_dst, zoneCount, id, timestamp</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Database Table Size Audit</title>
+        <search>
+          <query>`ansible_output` 
+| spath input=json output=site_id path=LOCATION.id
+| search site_id=$site_id$
+| head 1
+| spath input=json output=siteName path=LOCATION.name 
+| spath input=json output=NCDB_tableStatus path=MC.tableRowCounts.NCDB{}.status 
+| spath input=json output=NCDB_tableName path=MC.tableRowCounts.NCDB{}.table 
+| spath input=json output=NCDB_tableRowCount path=MC.tableRowCounts.NCDB{}.rowCount 
+| eval NCDB_tableName = mvmap(NCDB_tableName, "NCDB.".NCDB_tableName) 
+| spath input=json output=gmdb_tableStatus path=MC.tableRowCounts.gmdb{}.status 
+| spath input=json output=gmdb_tableName path=MC.tableRowCounts.gmdb{}.table 
+| spath input=json output=gmdb_tableRowCount path=MC.tableRowCounts.gmdb{}.rowCount 
+| eval gmdb_tableName = mvmap(gmdb_tableName, "gmdb.".gmdb_tableName) 
+| spath input=json output=intellidb_tableStatus path=MC.tableRowCounts.intellidb{}.status 
+| spath input=json output=intellidb_tableName path=MC.tableRowCounts.intellidb{}.table 
+| spath input=json output=intellidb_tableRowCount path=MC.tableRowCounts.intellidb{}.rowCount 
+| eval intellidb_tableName = mvmap(intellidb_tableName, "intellidb.".intellidb_tableName) 
+| spath input=json output=sensors_tableStatus path=MC.tableRowCounts.sensors{}.status 
+| spath input=json output=sensors_tableName path=MC.tableRowCounts.sensors{}.table 
+| spath input=json output=sensors_tableRowCount path=MC.tableRowCounts.sensors{}.rowCount 
+| eval sensors_tableName = mvmap(sensors_tableName, "sensors.".sensors_tableName) 
+| spath input=json output=weatherdb_tableStatus path=MC.tableRowCounts.weatherdb{}.status 
+| spath input=json output=weatherdb_tableName path=MC.tableRowCounts.weatherdb{}.table 
+| spath input=json output=weatherdb_tableRowCount path=MC.tableRowCounts.weatherdb{}.rowCount 
+| eval weatherdb_tableName = mvmap(weatherdb_tableName, "weatherdb.".weatherdb_tableName) 
+| eval tableName = mvappend(NCDB_tableName,gmdb_tableName,intellidb_tableName,sensors_tableName,weatherdb_tableName) 
+| eval tableStatus = mvappend(NCDB_tableStatus,gmdb_tableStatus,intellidb_tableStatus,sensors_tableStatus,weatherdb_tableStatus) 
+| eval tableRowCount = mvappend(NCDB_tableRowCount,gmdb_tableRowCount,intellidb_tableRowCount,sensors_tableRowCount,weatherdb_tableRowCount) 
+| eval tableMap = if(isnotnull(tableName), mvzip(tableName, tableStatus, ":"), "") 
+| eval tableMap = mvzip(tableMap, tableRowCount, ":") 
+| mvexpand tableMap 
+| eval temp2=split(tableMap,":") 
+| eval tblName=mvindex(temp2,0) 
+| eval tblStatus=mvindex(temp2,1) 
+| eval tblRowCount=mvindex(temp2,2) 
+| table site_id, tblName, tblStatus, tblRowCount
+| sort site_id tblRowCount DESC</query>
+          <earliest>$time_filter.earliest$</earliest>
+          <latest>$time_filter.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Zone WC State Mismatches</title>
+        <search>
+          <query>index="ansible" "event_data.res.output.stdout_lines{}"="*" "event_data.playbook"="devicelistvalues.yml"
+|rename event_data.res.output.stdout_lines{} as script_output
+|spath input=script_output output=site_id path=LOCATION.id
+|search site_id=$site_id$
+|head 1
+|spath input=script_output output=zone_state_issues path=PLATFORM_HEALTH.zones_and_wcs_states{}
+|mvexpand zone_state_issues
+|where like(zone_state_issues,"%zone_name%")
+|spath input=zone_state_issues output=zone_id path=zone_id
+|spath input=zone_state_issues output=zone_name path=zone_name
+|spath input=zone_state_issues output=state path=state
+|spath input=zone_state_issues output=wc_with_zoneState_exists path=wc_with_zoneState_exists
+|spath input=zone_state_issues output=member_state path=members{}.state
+|spath input=zone_state_issues output=wc_id path=members{}.wc_id
+|search wc_with_zoneState_exists="false"
+|eval wc_state_map=mvzip(wc_id, member_state,":")
+|mvexpand wc_state_map
+| eval temp=split(wc_state_map,":") 
+| eval wc_id=mvindex(temp,0) 
+| eval member_state=mvindex(temp,1)
+|table site_id, zone_id, zone_name, state, wc_with_zoneState_exists, wc_id, member_state
+|table zone_id, zone_name, state, wc_with_zoneState_exists, wc_id, member_state</query>
+          <earliest>$time_filter.earliest$</earliest>
+          <latest>$time_filter.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Master Controller Disk Space Usage</title>
+        <search>
+          <query>index="ansible" "event_data.res.output.stdout_lines{}"="*" "event_data.playbook"="devicelistvalues.yml"
+|rename event_data.res.output.stdout_lines{} as script_output
+|spath input=script_output output=site_id path=LOCATION.id
+```|search site_id=$site_id$```
+|search site_id=$site_id$
+|head 1
+| spath input=script_output output=diskspaceUsage path=MC.diskspaceUsage{}
+| mvexpand diskspaceUsage
+| spath input=diskspaceUsage
+| table Filesystem, Use%, Used, Avail, Size, Mounted_on</query>
+          <earliest>$time_filter.earliest$</earliest>
+          <latest>$time_filter.latest$</latest>
+        </search>
+        <option name="count">14</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Harddrive IO Health</title>
+        <search>
+          <query>index="lambda_automation" source="css_auto_hardware_health_drive"
+|search site_id=$site_id$
+|dedup site_id, dev, ATTRIBUTE_NAME
+|table dev, TYPE, ATTRIBUTE_NAME, RAW_VALUE, VALUE, THRESH, UPDATED, FLAG, WORST, WHEN_FAILED, timestamp, dev
+|stats list(TYPE) as Type, list(ATTRIBUTE_NAME) as Attribute_Name, list(RAW_VALUE) as Raw_Value, list(VALUE) as Value, list(THRESH) as Thresh, list(UPDATED) as Updated, list(FLAG) as Flag, list(WORST) as Worst, list(WHEN_FAILED) as When_Failed by dev, timestamp</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <search>
+          <query>search index="lambda_automation" source="css_auto_hardware_health_nc" site_id=$site_id$
+|rename nodeAddr as dev
+|dedup site_id, dev
+|table site_id, customer, dev, name, type, macAddress, ipaddr, enabled, vocStatus, cpu, version, mode, sshConnectionAvailable, lastRestartTime, commissioningMode, httpGetStatus</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>
