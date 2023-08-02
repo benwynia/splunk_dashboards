@@ -1,0 +1,1138 @@
+<form version="1.1" theme="dark">
+  <label>CS: Windows Controller Analyzer</label>
+  <search id="device_info">
+    <query>
+      |inputlookup wc_lite_mapping.csv
+|search site_id=$site_id$
+|rex field=wc_id "(?&lt;dev&gt;DEV\d+)."
+|eval lite_id=case(isnull(lite_id),"Missing Lite ID",1=1,lite_id)
+|eval label=wc_id." - ".can_id. " - ".lite_id
+|dedup wc_id
+|table site_id, customer, dev, wc_id, last_checked, zone_id, can_id, wc_gen, fw_version, lite_id, width_mils, height_mils, tvisIdentity, label
+    </query>
+    <earliest>-24h@h</earliest>
+    <latest>now</latest>
+    <done>
+      <condition>
+        <set token="device_info">$job.sid$</set>
+      </condition>
+    </done>
+  </search>
+  <search id="transition_list">
+    <query>
+        index=transition_data [|makeresults
+        |eval Site_ID=$site_id$
+        |eval Can_ID=ltrim(tostring($vendorId$),"0")]
+        |rename Can_ID as can_id, Site_ID as site_id
+        | eval can_id = substr("0000000", 0, max(8-len(can_id), 0)) . can_id
+        
+        |join type=left site_id can_id [|loadjob $wc_info$
+        |table site_id, customer, wc_id, last_checked, zone_id, can_id, wc_gen, fw_version, lite_id, width_mils, height_mils, tvisIdentity]
+        
+        |eval BusBar_Distance_Rounded=round((min(width_mils,height_mils)/1000),0)
+        |eval _time=strptime(Start_Time,"%Y-%m-%d %H:%M:%S")
+        
+        |table site_id, customer, wc_id, last_checked, zone_id, can_id, wc_gen, fw_version, lite_id, width_mils, height_mils, tvisIdentity, BusBar_Distance_Rounded, _time, Transition, Start_Time, End_Time, Transition_Time, Command, State, Drive_Voltage_Actual, Drive_Voltage_Setpoint, Hold_Voltage_Actual, Hold_Voltage_Setpoint, Leakage_Current, Peak_Current, Q_Actual, Q_Target, VOC_Actual, VOC_Exit, VOC_Mode. VOC_State, VOC_Target, Job_Date
+    </query>
+    <earliest>-10y</earliest>
+    <latest>now</latest>
+    <done>
+      <condition>
+        <set token="transition_list">$job.sid$</set>
+      </condition>
+    </done>
+  </search>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="dropdown" token="site_id" searchWhenChanged="false">
+      <label>Customer</label>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>site_id</fieldForValue>
+      <search>
+        <query>| inputlookup site_info.csv
+|where site_id &gt; 5000
+| dedup site_id
+| table customer site_id
+| eval label=site_id.": ".customer
+| sort site_id ASC
+        </query>
+        <earliest>-1d@d</earliest>
+        <latest>@d</latest>
+      </search>
+      <change>
+        <condition>
+          <unset token="transition_list"></unset>
+          <unset token="raw_wc_data"></unset>
+        </condition>
+      </change>
+    </input>
+    <input type="dropdown" token="dev" searchWhenChanged="true">
+      <label>Dev</label>
+      <search>
+        <query>
+                |inputlookup wc_lite_mapping.csv
+|search site_id=$site_id$
+|rex field=wc_id "(?&lt;dev&gt;DEV\d+)."
+|rex field=dev "DEV(?&lt;devnum&gt;\d+)"
+|dedup dev
+|table dev, devnum
+|sort devnum ASC</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <fieldForLabel>dev</fieldForLabel>
+      <fieldForValue>dev</fieldForValue>
+      <prefix>"</prefix>
+      <suffix>"</suffix>
+      <change>
+        <condition>
+          <unset token="transition_list"></unset>
+        </condition>
+      </change>
+    </input>
+    <input type="dropdown" token="vendorId" searchWhenChanged="true">
+      <label>WC - CANID - Lite ID</label>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>can_id</fieldForValue>
+      <search>
+        <query>|loadjob $device_info$
+|search dev=$dev$</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <change>
+        <condition>
+          <unset token="transition_list"></unset>
+          <unset token="raw_wc_data"></unset>
+        </condition>
+      </change>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <single>
+        <search>
+          <query>| inputlookup site_info.csv
+|where site_id=$site_id$
+| dedup site_id
+| table customer site_id
+| eval label=site_id.": ".customer
+| sort site_id ASC
+|table label</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">53</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_basicinfo">
+      <html>
+                <style>
+                    #header_basicinfo .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Basic Info</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Window Controller and Lite Data</title>
+        <search>
+          <done>
+            <condition>
+              <set token="wc_info">$job.sid$</set>
+            </condition>
+          </done>
+          <query>|loadjob $device_info$
+|search dev=$dev$ can_id=$vendorId$
+|table site_id, customer, wc_id, last_checked, zone_id, can_id, wc_gen, fw_version, lite_id, width_mils, height_mils, tvisIdentity
+|table site_id, customer, wc_id, zone_id, can_id, wc_gen, fw_version, lite_id, last_checked, width_mils, height_mils
+|transpose 0</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">15</option>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show4$">
+      <table>
+        <title>Network Outage Information / Data Availability</title>
+        <search>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show4">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show4"></unset>
+            </condition>
+          </progress>
+          <query>index=lasthb
+|where client_id=$site_id$
+| eval downsince=strftime(last_hb_time, "%m/%d/%y %H:%M:%S")
+| eval downtime=(_time-last_hb_time)/3600
+| eval downdays = tostring(downtime*3600, "duration")
+| eval downtimeMin=(_time-last_hb_time)/60
+| eval duration2=replace(downdays,"((\d+)\+)*(\d+):(\d+):(\d*\.\d*)","\2 Days \3 Hrs \4 Mins")
+| sort by - _time
+| eval currentStatus=if (_time &lt; now()-900, "Connection Recovered", "Currently Down")
+| eval downtimeMin=round(downtimeMin)
+| dedup customer, downsince
+| sort by customer
+| table client_id, customer, downsince, downtimeMin, duration2, currentStatus
+| rename client_id as "Site Id" customer as Customer downsince as "Outage Start" downtimeMin as "Downtime in Min (rounded)" duration2 as Duration currentStatus as "Outage Status"</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_vocexit">
+      <html>
+                <style>
+                    #header_vocexit .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">VOC Exit Results</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <search>
+          <query>|loadjob $transition_list$
+|sort _time DESC
+| eventstats count as "Total_Transitions" 
+| eventstats count as "VOC_Exit_Count" by VOC_Exit
+| eval percent=(VOC_Exit_Count/Total_Transitions)*100
+| stats max(_time) as last_occurrance by VOC_Exit, VOC_Exit_Count, percent
+|eval last_occurrance=strftime(last_occurrance,"%Y-%m-%d %H:%M:%S")</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="VOC_Exit">
+          <colorPalette type="map">{"3":#DC4E41,"4":#F1813F,"5":#F1813F}</colorPalette>
+        </format>
+        <format type="number" field="percent">
+          <option name="precision">1</option>
+        </format>
+      </table>
+    </panel>
+    <panel>
+      <html>
+ <h1>VOC Exit Explanation </h1>
+<p> 0 -- Voc_only	 (After reboot) </p>  
+
+<p> 1 -- Voc_and_Q (Normal Transitions) </p>  
+
+<p> 2 -- Q Only (Interrupted Transitions) </p>  
+
+<p> 3 -- Transition timed out before reaching VOC/Q Target </p>
+
+<p> 4-- Transition failed to achieve Q Limit </p>
+
+<p> 5-- Unknown VOC Exit </p>
+          
+      </html>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_wcdata">
+      <html>
+                <style>
+                    #header_wcdata .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Window Controller Data</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Site WC Data File Availability</title>
+        <search>
+          <query>| dbxquery connection="splunk-db" maxrows=0 query="select MAX(proc_end_time) as 'Most Recent Data Available' from wcdata_zip_files where site_id='$site_id$'"</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel>
+      <input type="dropdown" token="start_date" searchWhenChanged="true">
+        <label>Earliest Date</label>
+        <fieldForLabel>start_date</fieldForLabel>
+        <fieldForValue>start_date</fieldForValue>
+        <search>
+          <query>| gentimes start=-60 increment=1d
+|eval start_date=strftime(starttime, "%Y-%m-%d %H:%M:%S")
+|eval end_date=strftime(endtime, "%Y-%m-%d %H:%M:%S")
+|table start_date, starttime, end_date, endtime</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+      </input>
+      <input type="dropdown" token="end_date" searchWhenChanged="true">
+        <label>Latest Date</label>
+        <fieldForLabel>end_date</fieldForLabel>
+        <fieldForValue>end_date</fieldForValue>
+        <search>
+          <query>| gentimes start=-60 increment=1d
+|eval start_date=strftime(starttime, "%Y-%m-%d %H:%M:%S")
+|eval end_date=strftime(endtime, "%Y-%m-%d %H:%M:%S")
+|table start_date, starttime, end_date, endtime</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+      </input>
+      <table>
+        <title>Raw WC Data</title>
+        <search id="raw_wc_data">
+          <query>
+      | dbxquery connection="Snowflake" query="SELECT * FROM "IB_ENRICHED_PROD"."CONS"."EDL_CSS_WC_DATA" WHERE SITE_ID = $site_id$ AND NC = '$dev$' AND VENDOR_ID = '$vendorId$' AND "DATE" BETWEEN '$start_date$' AND '$end_date$'"
+`wc_data_to_lowercase`
+    </query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+          <done>
+            <condition>
+              <set token="raw_wc_data">$job.sid$</set>
+            </condition>
+          </done>
+        </search>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Command</title>
+        <search>
+          <query>|loadjob $raw_wc_data$
+| eval _time=strptime(date,"%Y-%m-%d %H:%M:%S")
+| timechart span=1m values(command) as Command values(state) as State</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisLabelsY.majorUnit">5</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.maximumNumber">15</option>
+        <option name="charting.axisY.minimumNumber">-2</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.axisY2.scale">inherit</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.chart.overlayFields">State</option>
+        <option name="charting.chart.resultTruncationLimit">100000000</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.data.count">0</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="height">500</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Current</title>
+        <search>
+          <query>|loadjob $raw_wc_data$
+| eval _time=strptime(date,"%Y-%m-%d %H:%M:%S")
+| sort _time ASC
+| timechart span=1m max(current) as current max(setpt_volt) as setpt_volt max(act_volt) as act_volt</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.text">Voltage (mV)</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.text">Current (mA)</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.axisY2.maximumNumber">1000</option>
+        <option name="charting.axisY2.minimumNumber">-1000</option>
+        <option name="charting.axisY2.scale">linear</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.chart.overlayFields">current</option>
+        <option name="charting.chart.resultTruncationLimit">100000000</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.data.count">0</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="height">500</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Q Charge vs Charge Target</title>
+        <search>
+          <query>|loadjob $raw_wc_data$
+| eval _time=strptime(date,"%Y-%m-%d %H:%M:%S")
+| sort _time ASC
+| timechart span=1m max(q) as Q_Charge max(target_q) as Target_Charge_Q</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.text">Voltage (mV)</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.text">Current (mA)</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.axisY2.maximumNumber">1000</option>
+        <option name="charting.axisY2.minimumNumber">-1000</option>
+        <option name="charting.axisY2.scale">linear</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.chart.overlayFields">current</option>
+        <option name="charting.chart.resultTruncationLimit">100000000</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.data.count">0</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="height">500</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>VOC vs VOC Target</title>
+        <search>
+          <query>|loadjob $raw_wc_data$
+| eval _time=strptime(date,"%Y-%m-%d %H:%M:%S")
+| sort _time ASC
+| timechart span=1m max(voc) as VOC max(target_voc) as VOC_Target</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.text">Voltage (mV)</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.text">Current (mA)</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.axisY2.maximumNumber">1000</option>
+        <option name="charting.axisY2.minimumNumber">-1000</option>
+        <option name="charting.axisY2.scale">linear</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.chart.overlayFields">current</option>
+        <option name="charting.chart.resultTruncationLimit">100000000</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.data.count">0</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="height">500</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>VOC Table</title>
+        <search>
+          <query>|loadjob $raw_wc_data$
+| eval _time=strptime(date,"%Y-%m-%d %H:%M:%S")
+| sort _time ASC
+| timechart span=1m max(voc_mode) as voc_mode max(voc_exit) as voc_exit</query>
+          <earliest>0</earliest>
+          <latest></latest>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.overflowMode">ellipsisNone</option>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">0</option>
+        <option name="charting.axisTitleX.visibility">visible</option>
+        <option name="charting.axisTitleY.visibility">visible</option>
+        <option name="charting.axisTitleY2.text">Current (mA)</option>
+        <option name="charting.axisTitleY2.visibility">visible</option>
+        <option name="charting.axisX.scale">linear</option>
+        <option name="charting.axisY.scale">linear</option>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.axisY2.maximumNumber">1000</option>
+        <option name="charting.axisY2.minimumNumber">-1000</option>
+        <option name="charting.axisY2.scale">linear</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.bubbleMaximumSize">50</option>
+        <option name="charting.chart.bubbleMinimumSize">10</option>
+        <option name="charting.chart.bubbleSizeBy">area</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.chart.overlayFields">current</option>
+        <option name="charting.chart.resultTruncationLimit">100000000</option>
+        <option name="charting.chart.showDataLabels">none</option>
+        <option name="charting.chart.sliceCollapsingThreshold">0.01</option>
+        <option name="charting.chart.stackMode">stacked</option>
+        <option name="charting.chart.style">shiny</option>
+        <option name="charting.data.count">0</option>
+        <option name="charting.drilldown">all</option>
+        <option name="charting.layout.splitSeries">1</option>
+        <option name="charting.layout.splitSeries.allowIndependentYRanges">0</option>
+        <option name="charting.legend.labelStyle.overflowMode">ellipsisMiddle</option>
+        <option name="charting.legend.placement">right</option>
+        <option name="height">500</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_transitiontime">
+      <html>
+                <style>
+                    #header_transitiontime .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Window Controller Transition Time </h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="time" token="transition_time_filter" searchWhenChanged="true">
+        <label>Time</label>
+        <default>
+          <earliest>-90d@d</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <table>
+        <search>
+          <query>|loadjob $transition_list$
+|addinfo
+|where _time &gt; info_min_time AND _time &lt; info_max_time
+|table Transition, BusBar_Distance, BusBar_Distance_Rounded, _time, Transition_Time
+
+|lookup key_transition_statistics.csv Transition BusBar_Distance_Rounded OUTPUTNEW Avg_Transition_Time Stdev_Transition_Time
+|eval Upper_Limit_Transition_Time = Avg_Transition_Time + Stdev_Transition_Time
+|eval Lower_Limit_Transition_Time = Avg_Transition_Time - Stdev_Transition_Time
+
+|table Can_ID, Firmware, Lite_ID, Transition, BusBar_Distance, BusBar_Distance_Rounded, _time, Transition_Time, Upper_Limit_Transition_Time, Lower_Limit_Transition_Time
+
+|stats avg(Transition_Time) as Avg_Transition_Time_Mins count(Transition_Time) as Transition_Count avg(Lower_Limit_Transition_Time) as lower_limit, avg(Upper_Limit_Transition_Time) as upper_limit by Transition
+|eval OOS=if(Avg_Transition_Time_Mins &gt; upper_limit OR Avg_Transition_Time_Mins &lt; lower_limit,"Fail","Pass")
+|table Transition, Transition_Count, Avg_Transition_Time_Mins, lower_limit, upper_limit, OOS
+|sort OOS Asc</query>
+          <earliest>$transition_time_filter.earliest$</earliest>
+          <latest>$transition_time_filter.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="number" field="Transition_Time">
+          <option name="precision">1</option>
+        </format>
+        <format type="number" field="lower_limit">
+          <option name="precision">1</option>
+          <option name="unit">mins</option>
+        </format>
+        <format type="number" field="upper_limit">
+          <option name="precision">1</option>
+          <option name="unit">mins</option>
+        </format>
+        <format type="color" field="OOS">
+          <colorPalette type="map">{"Pass":#53A051,"Fail":#DC4E41}</colorPalette>
+        </format>
+        <format type="number" field="Avg_Transition_Time_Mins">
+          <option name="precision">1</option>
+          <option name="unit">minutes</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Tint Times by Transition versus Baseline for IGU of Same Busbar Size</title>
+        <search>
+          <query>|loadjob $transition_list$
+|addinfo
+|where _time &gt; info_min_time AND _time &lt; info_max_time
+|table Can_ID, Firmware, Lite_ID, Transition, BusBar_Distance, BusBar_Distance_Rounded, _time, Transition_Time
+
+|lookup key_transition_statistics.csv Transition BusBar_Distance_Rounded OUTPUTNEW Avg_Transition_Time Stdev_Transition_Time
+|eval Upper_Limit_Transition_Time = Avg_Transition_Time + Stdev_Transition_Time
+|eval Lower_Limit_Transition_Time = Avg_Transition_Time - Stdev_Transition_Time
+
+|table Can_ID, Firmware, Lite_ID, Transition, BusBar_Distance, BusBar_Distance_Rounded, _time, Transition_Time, Upper_Limit_Transition_Time, Lower_Limit_Transition_Time
+| timechart avg(Transition_Time) as Transition_Time avg(Lower_Limit_Transition_Time) as lower_limit avg(Upper_Limit_Transition_Time) as upper_limit by Transition</query>
+          <earliest>$transition_time_filter.earliest$</earliest>
+          <latest>$transition_time_filter.latest$</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.axisTitleY2.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.mode">seriesCompare</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="height">409</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">1</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_leakagecurrent">
+      <html>
+                <style>
+                    #header_leakagecurrent .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Window Controller Leakage Current </h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="time" token="leakage_current_time" searchWhenChanged="true">
+        <label>Time</label>
+        <default>
+          <earliest>-90d@d</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <table>
+        <title>Leakage current by Transition versus Baseline for IGU of Same Size Busbar</title>
+        <search>
+          <query>|loadjob $transition_list$
+|addinfo
+|where _time &gt; info_min_time AND _time &lt; info_max_time
+
+
+|lookup key_transition_statistics.csv Transition BusBar_Distance_Rounded OUTPUTNEW Avg_Leakage_Current Stdev_Leakage_Current
+|eval Upper_Limit_Leakage_Current = Avg_Leakage_Current + Stdev_Leakage_Current
+|eval Lower_Limit_Leakage_Current = Avg_Leakage_Current - Stdev_Leakage_Current
+
+
+|stats avg(Leakage_Current) as Leakage_Current count(Transition_Time) as Transition_Count avg(Lower_Limit_Leakage_Current) as lower_limit, avg(Upper_Limit_Leakage_Current) as upper_limit by Transition
+|eval OOS=if(Leakage_Current &lt; lower_limit OR Leakage_Current &gt; upper_limit,"Fail","Pass")
+|table Transition, Transition_Count, Leakage_Current , lower_limit, upper_limit, OOS
+|sort OOS Asc</query>
+          <earliest>$leakage_current_time.earliest$</earliest>
+          <latest>$leakage_current_time.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="OOS">
+          <colorPalette type="map">{"Fail":#DC4E41,"Pass":#53A051}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Leakage Current versus Baseline for IGU of Same Busbar Size</title>
+        <search>
+          <query>|loadjob $transition_list$
+|addinfo
+|where _time &gt; info_min_time AND _time &lt; info_max_time
+
+
+|lookup key_transition_statistics.csv Transition BusBar_Distance_Rounded OUTPUTNEW Avg_Leakage_Current Stdev_Leakage_Current
+|eval Upper_Limit_Leakage_Current = Avg_Leakage_Current + Stdev_Leakage_Current
+|eval Lower_Limit_Leakage_Current = Avg_Leakage_Current - Stdev_Leakage_Current
+
+
+| timechart values(Leakage_Current) as Leakage_Current avg(Lower_Limit_Leakage_Current) as lower_limit avg(Upper_Limit_Leakage_Current) as upper_limit by Transition</query>
+          <earliest>$leakage_current_time.earliest$</earliest>
+          <latest>$leakage_current_time.latest$</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.axisTitleY2.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">1</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_peakcurrent">
+      <html>
+                <style>
+                    #header_peakcurrent .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Window Controller Peak Current </h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Peak Current Data</title>
+      <input type="time" token="peak_current_time" searchWhenChanged="true">
+        <label>Peak Current Time</label>
+        <default>
+          <earliest>-90d@d</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <table>
+        <title>Peak Current Table</title>
+        <search>
+          <query>|loadjob $transition_list$
+|addinfo
+|where _time &gt; info_min_time AND _time &lt; info_max_time
+
+|lookup key_transition_statistics.csv Transition BusBar_Distance_Rounded OUTPUTNEW Avg_Peak_Current Stdev_Peak_Current
+|eval Upper_Limit_Peak_Current = Avg_Peak_Current + Stdev_Peak_Current
+|eval Lower_Limit_Peak_Current = Avg_Peak_Current - Stdev_Peak_Current
+
+
+|stats avg(Peak_Current) as Peak_Current count as Transition_Count avg(Lower_Limit_Peak_Current) as lower_limit, avg(Upper_Limit_Peak_Current) as upper_limit by Transition
+|eval OOS=if(Peak_Current &lt; lower_limit OR Peak_Current &gt; upper_limit,"Fail","Pass")
+|table Transition, Transition_Count, Peak_Current , lower_limit, upper_limit, OOS</query>
+          <earliest>$peak_current_time.earliest$</earliest>
+          <latest>$peak_current_time.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="OOS">
+          <colorPalette type="map">{"Pass":#53A051,"Fail":#DC4E41}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Peak Current Graphs</title>
+        <search>
+          <query>|loadjob $transition_list$
+|addinfo
+|where _time &gt; info_min_time AND _time &lt; info_max_time
+
+
+|lookup key_transition_statistics.csv Transition BusBar_Distance_Rounded OUTPUTNEW Avg_Peak_Current Stdev_Peak_Current
+|eval Upper_Limit_Peak_Current = Avg_Peak_Current + Stdev_Peak_Current
+|eval Lower_Limit_Peak_Current = Avg_Peak_Current - Stdev_Peak_Current
+
+
+| timechart values(Peak_Current) as Peak_Current avg(Lower_Limit_Peak_Current) as lower_limit avg(Upper_Limit_Peak_Current) as upper_limit by Transition</query>
+          <earliest>$peak_current_time.earliest$</earliest>
+          <latest>$peak_current_time.latest$</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.axisTitleY2.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">1</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_charge">
+      <html>
+                <style>
+                    #header_charge .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Window Controller Charge</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Window Controller Charge</title>
+      <input type="time" token="charge_time" searchWhenChanged="true">
+        <label>WC Charge Time</label>
+        <default>
+          <earliest>-90d@d</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <table>
+        <title>Window Controller Charge Table</title>
+        <search>
+          <query>|loadjob $transition_list$
+|addinfo
+|where _time &gt; info_min_time AND _time &lt; info_max_time
+
+|lookup key_transition_statistics.csv Transition BusBar_Distance_Rounded OUTPUTNEW Avg_Q_Actual Stdev_Q_Actual
+|eval Upper_Limit_Q = Avg_Q_Actual + Stdev_Q_Actual
+|eval Lower_Limit_Q = Avg_Q_Actual - Stdev_Q_Actual
+
+
+|stats count as Transition_Count avg(Avg_Q_Actual) as Q avg(Lower_Limit_Q) as lower_limit, avg(Upper_Limit_Q) as upper_limit by Transition
+|eval OOS=if(Q - lower_limit &lt; 0 OR Q - upper_limit &gt; 0,"Fail","Pass")
+|table Transition, Transition_Count, Q , lower_limit, upper_limit, OOS</query>
+          <earliest>$charge_time.earliest$</earliest>
+          <latest>$charge_time.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="OOS">
+          <colorPalette type="map">{"Fail":#DC4E41,"Pass":#53A051}</colorPalette>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>WC Charge Graphs</title>
+        <search>
+          <query>|loadjob $transition_list$
+|addinfo
+|where _time &gt; info_min_time AND _time &lt; info_max_time
+
+
+|lookup key_transition_statistics.csv Transition BusBar_Distance_Rounded OUTPUTNEW Avg_Q_Actual Stdev_Q_Actual
+|eval Upper_Limit_Q = Avg_Q_Actual + Stdev_Q_Actual
+|eval Lower_Limit_Q = Avg_Q_Actual - Stdev_Q_Actual
+
+
+| timechart values(Q_Actual) as Q avg(Lower_Limit_Q) as lower_limit avg(Upper_Limit_Q) as upper_limit by Transition</query>
+          <earliest>$charge_time.earliest$</earliest>
+          <latest>$charge_time.latest$</latest>
+        </search>
+        <option name="charting.axisTitleX.visibility">collapsed</option>
+        <option name="charting.axisTitleY.visibility">collapsed</option>
+        <option name="charting.axisTitleY2.visibility">collapsed</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.chart.nullValueMode">connect</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.legend.placement">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">1</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_transitions">
+      <html>
+                <style>
+                    #header_transitions .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Window Controller Transition History </h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Lifetime Transition Counts</title>
+        <search>
+          <query>|loadjob $transition_list$
+|stats count as Transition_Count avg(Transition_Time) as Avg_Transition_Time_Mins by Transition
+|sort Transition_Count DESC</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="number" field="Avg_Transition_Time">
+          <option name="precision">1</option>
+        </format>
+        <format type="number" field="Avg_Transition_Time_Mins"></format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>VOC Exit History</title>
+        <search>
+          <query>|loadjob $transition_list$
+|sort _time DESC
+|timechart values(VOC_Exit) AS VOC_Exit</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.axisLabelsY.majorUnit">1</option>
+        <option name="charting.axisY.maximumNumber">5</option>
+        <option name="charting.axisY.minimumNumber">-1</option>
+        <option name="charting.chart">line</option>
+        <option name="charting.drilldown">none</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <search>
+          <query>|loadjob $transition_list$
+|sort _time DESC</query>
+          <earliest>-30d@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="color" field="VOC_Exit">
+          <colorPalette type="list">[#53A051,#DC4E41]</colorPalette>
+          <scale type="threshold">3</scale>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_events">
+      <html>
+                <style>
+                    #header_events .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Event History</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Open Issues</title>
+        <search>
+          <query>| dbxquery query="SELECT b.customer, a.*, CONCAT('DEV',a.obj_id) AS object, c.vendorId, c.id
+FROM customer_sites.object_event_map a, customer_sites.site_info b, customer_sites.wc_config c
+WHERE is_cleared=0
+AND a.site_id=b.site_id
+AND b.site_id=c.site_id
+AND a.obj_type='WC'
+AND c.id = CONCAT('DEV',a.obj_id)
+AND a.site_id=$site_id$
+AND RIGHT('000' + vendorId, 12)=$vendorId$;" connection="appserver"
+|table site_id, customer, object, vendorId, event_id, message, time, is_cleared</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel>
+      <input type="time" token="history_time">
+        <label></label>
+        <default>
+          <earliest>-7d@h</earliest>
+          <latest>now</latest>
+        </default>
+      </input>
+      <table>
+        <title>Event History</title>
+        <search>
+          <query>index="clear_events" [|inputlookup _periscope_views_wc_config_latest.csv
+|append [|inputlookup _periscope_views_denali_wc_config_latest.csv]
+|where site_id&gt;5000
+|eval vendorId=ltrim(tostring(vendorId),"0")
+|search site_id=$site_id$ vendorId=$vendorId$
+|rename id as wc_id
+| rex field=wc_id "DEV(?P&lt;dev&gt;\d+).WC(?P&lt;wc&gt;\d+)"
+| rex field=wc_id "(?&lt;NC&gt;DEV\d+).WC(?P&lt;wc&gt;\d+)"
+|lookup site_info.csv site_id OUTPUTNEW customer 
+|where isnotnull(customer)
+|eval label=wc_id.": ".vendorId
+|rex field=wc_id "DEV(?&lt;object&gt;\S+)"
+|table site_id, customer, NC, dev, wc_id, object, wc, zone_id, vendorId
+|table object]
+
+| rex field=object "^(?P&lt;dev&gt;[^\.]+)"
+|search site_id=$site_id$
+|where !like(object,"%ZN%")
+|sort dev, object
+|table site_id, customer, dev, object, event_id, message, time, clear_time, clear_reason, duration
+|sort time DESC</query>
+          <earliest>$history_time.earliest$</earliest>
+          <latest>$history_time.latest$</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_wcdataanalysis">
+      <html>
+                <style>
+                    #header_wcdataanalysis .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Window Controller Data Anomaly Flags</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Hippo Degradation Results</title>
+        <search>
+          <query>|inputlookup wc_lite_mapping.csv
+|search site_id=$site_id$ can_id=$vendorId$
+|table site_id, customer, wc_id, can_id,fw_version, wc_gen, lite_id, last_checked, busbar_mils, height_mils, width_mils, tvisIdentity, voltage_offsets
+
+|join type=left site_id lite_id [search index=transition_data sourcetype="hippo_igurisk"
+| search Site_ID=$site_id$
+|dedup Lite_ID
+|rename Lite_ID as lite_id, Site_ID as site_id
+|table site_id, lite_id, First_Warning, Last_Warning, First_Alert, Last_Alert, First_Degradation, Last_Degradation, Last_Execution, confidence]
+
+|table site_id, customer, wc_id, can_id, lite_id, First_Warning, Last_Warning, First_Alert, Last_Alert, First_Degradation, Last_Degradation, Last_Execution, confidence</query>
+          <earliest>1590994800</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <title>Hit submit at the top if you change these settings</title>
+      <input type="multiselect" token="check_num" searchWhenChanged="true">
+        <label>Failure Conditions</label>
+        <choice value="1">(1) Current not responding to voltage change</choice>
+        <choice value="2">(2) Setpoint and Actual Voltage are &gt;50mv different</choice>
+        <choice value="3">(3) Voltage Range Checks</choice>
+        <choice value="3.5">(3.5) Max Negative Setpoint Voltage Check</choice>
+        <choice value="4">(4) WCs in State 0,7,17,130</choice>
+        <choice value="5">(5) Actual Voltage Noise</choice>
+        <choice value="6">(6) Current Noise</choice>
+        <choice value="7">(7) Current Noise after transition</choice>
+        <choice value="1,2,3,3.5,4,5,6,7">All</choice>
+        <delimiter>,</delimiter>
+        <initialValue>1,6,2,4</initialValue>
+      </input>
+      <input type="dropdown" token="count" searchWhenChanged="true">
+        <label>Min Failure Count</label>
+        <choice value="1">1</choice>
+        <choice value="2">2</choice>
+        <choice value="3">3</choice>
+        <choice value="4">4</choice>
+        <choice value="5">5</choice>
+        <default>1</default>
+      </input>
+      <table>
+        <title>Rule Based Failure Checks</title>
+        <search>
+          <query>index=wcdata_audit 
+|search site_id=$site_id$ can_id=$vendorId$
+|eval event_time = strptime(time,"%Y-%m-%d %H:%M:%S.%f")
+|eval lastWeek = relative_time(now(),"-7d@d")
+|eval url = "http://mp-noc-websrv01/wcdata_grapher_webapp/?site_id=".site_id."&amp;filename=".wcdata_filename."&amp;can_id=".can_id
+|where (event_time &gt; lastWeek) and (check IN ($check_num$)) and (count &gt; $count$ - 1)
+|table time, site_id, check, nc, can_id, wcdata_filename, count, event_time, lastWeek, url
+
+|join type=left site_id can_id [| inputlookup _periscope_views_wc_config_latest.csv
+|rename id as object
+| table site_id, object, vendorId, zone_id
+|join type=left site_id zone_id [| inputlookup _periscope_views_site_config.csv
+| dedup id_win, zone_id_wc
+| rename zone_id_wc as zone_id, id_win as zone_name
+| table site_id, zone_id, zone_name]
+| rename vendorId as can_id
+| table site_id, object, can_id, zone_id, zone_name]
+
+| join type=left site_id
+   [| inputlookup site_info.csv
+   | table site_id, customer]
+|table time, site_id, customer, check, nc, object, can_id, count, wcdata_filename, url
+|stats list(check) as check list(count) as event_count list(time) as timestamp list(url) as wc_data_plot sum(count) as total_flags by site_id, customer, nc, object, can_id
+
+|rex field=object "DEV(?&lt;object&gt;\S+)"
+|join type=left site_id object [|inputlookup known_issues.csv
+```|eval object="DEV".object```
+|table site_id, object, event_id, issue_num]
+
+|fields site_id, customer, object, can_id, total_flags, issue_num, check, event_count, timestamp, wc_data_plot, issue_num
+|table site_id, customer, object, can_id, total_flags, check, event_count, timestamp, wc_data_plot, issue_num
+|sort total_flags DESC</query>
+          <earliest>-7d@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+</form>
