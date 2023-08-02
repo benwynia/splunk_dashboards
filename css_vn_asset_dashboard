@@ -1,0 +1,1868 @@
+<form version="1.1" theme="dark">
+  <label>Asset Dashboard</label>
+  <description>Note: Data updates every 5-10 minutes from View Cloud API call. For near real time data, check Postman</description>
+  <fieldset submitButton="false">
+    <input type="dropdown" token="environment">
+      <label>Select an environment</label>
+      <choice value="prod">Prod</choice>
+      <choice value="staging">Staging</choice>
+      <fieldForLabel>Name</fieldForLabel>
+      <fieldForValue>Value</fieldForValue>
+      <prefix>"</prefix>
+      <suffix>"</suffix>
+      <default>prod</default>
+      <initialValue>prod</initialValue>
+    </input>
+    <input type="dropdown" token="buildingId" searchWhenChanged="true">
+      <label>Select a Building</label>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>uniqueId</fieldForValue>
+      <search>
+        <query>|inputlookup buildings.csv
+|eval environment="staging"
+|append [|inputlookup prod_buildings.csv
+|eval environment="prod"]
+|search environment=$environment$
+|eval label=uniqueId.": ".name
+|table label, uniqueId</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <prefix>"</prefix>
+      <suffix>"</suffix>
+    </input>
+  </fieldset>
+  <row>
+    <panel id="header_siteoverview">
+      <html>
+                <style>
+                    #header_siteoverview .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Company and Building Information</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>Building Name</title>
+        <search>
+          <query>|inputlookup prod_buildings.csv
+|eval environment="prod" 
+|append [|inputlookup buildings.csv 
+|eval environment="staging"]
+|rename uniqueId as buildingId
+|search buildingId=$buildingId$ environment=$environment$
+|table buildingId, name, address, city, state, zip, timezone, pocName, pocEmail, pocPhone, csmName, csmEmail, csmPhone, context_bldg_lat, context_bldg_long, context_utc_offset
+|table name</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">110</option>
+      </single>
+    </panel>
+    <panel>
+      <table>
+        <title>Company Name</title>
+        <search>
+          <query>|inputlookup prod_buildings.csv
+|eval environment="prod" 
+|append [|inputlookup buildings.csv 
+|eval environment="staging"]
+|rename uniqueId as buildingId, name as buildingName
+|search buildingId=$buildingId$ environment=$environment$
+|table buildingId, buildingName, companyId
+
+|join type=left max=0 companyId [|inputlookup prod_companies.csv
+|eval environment="prod" 
+|append [|inputlookup companies.csv 
+|eval environment="staging"]
+|search environment=$environment$
+|rename uniqueId as companyId
+|table name, companyId]
+|table name, companyId</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Building Information</title>
+        <search>
+          <query>|inputlookup prod_buildings.csv
+|eval environment="prod" 
+|append [|inputlookup buildings.csv 
+|eval environment="staging"]
+|rename uniqueId as buildingId
+|search buildingId=$buildingId$ environment=$environment$
+|table buildingId, name, address, city, state, zip, timezone, pocName, pocEmail, pocPhone, csmName, csmEmail, csmPhone, context_bldg_lat, context_bldg_long, context_utc_offset</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_sitetopology">
+      <html>
+                <style>
+                    #header_sitetopology .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Site Topology</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>Control Panels (CPs)</title>
+        <search>
+          <query>|inputlookup prod_devices_cp.csv
+|eval environment="prod" 
+|append [|inputlookup devices_cp.csv
+|eval environment="staging"]
+|search buildingId=$buildingId$ environment=$environment$
+|stats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Control Panel Head Ends (CPHEs)</title>
+        <search>
+          <query>|inputlookup prod_devices_cphe.csv
+|eval environment="prod" 
+|append [|inputlookup devices_cphe.csv
+|eval environment="staging"]
+|search buildingId=$buildingId$ environment=$environment$
+|stats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Enterprise Switches (ES)</title>
+        <search>
+          <query>|inputlookup prod_devices_es.csv
+|eval environment="prod" 
+|append [|inputlookup devices_es.csv
+|eval environment="staging"]
+|search buildingId=$buildingId$ environment=$environment$
+|stats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Power Distribution Units (PDUs)</title>
+        <search>
+          <query>|inputlookup prod_devices_pdu.csv
+|eval environment="prod" 
+|append [|inputlookup devices_pdu.csv
+|eval environment="staging"]
+|search buildingId=$buildingId$ environment=$environment$
+|stats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Fan Controller (FANC)</title>
+        <search>
+          <query>|inputlookup prod_devices_fanc.csv
+|eval environment="prod" 
+|append [|inputlookup devices_fanc.csv
+|eval environment="staging"]
+|search buildingId=$buildingId$ environment=$environment$
+|stats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Skysensor (SS)</title>
+        <search>
+          <query>|inputlookup prod_devices_skysensor.csv
+|eval environment="prod" 
+|append [|inputlookup devices_skysensor.csv
+|eval environment="staging"]
+|search buildingId=$buildingId$ environment=$environment$
+|table buildingId, controlPanelId, deviceType, logicalId, serial, type, commissioned, status
+|stats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Smart Glass Units (IGU)</title>
+        <search>
+          <query>|inputlookup prod_devices_igu.csv
+|eval environment="prod"
+|append [|inputlookup devices_igu.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|stats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <search>
+          <query>|inputlookup prod_devices_controllers.csv
+|eval environment="prod" 
+|append [|inputlookup devices_controllers.csv
+|eval environment="staging"]
+|search buildingId=$buildingId$ environment=$environment$
+|table buildingId, controlPanelId, deviceType, logicalId, serial, status, commissioned
+
+``` CPHE information ```
+|append [|inputlookup prod_devices_cphe.csv
+|eval environment="prod" 
+|append [|inputlookup devices_cphe.csv
+|eval environment="staging"]
+|search buildingId=$buildingId$ environment=$environment$
+|rename device_status_registration_status as commissioned, device_status_network_status as status
+|table buildingId, deviceType, logicalId, serial, type, controlPanelId, status, commissioned]
+
+``` Enterprise Switch Information ```
+|append [|inputlookup prod_devices_es.csv
+|eval environment="prod" 
+|append [|inputlookup devices_es.csv
+|eval environment="staging"]
+|search buildingId=$buildingId$ environment=$environment$
+|table buildingId, controlPanelId, deviceType, logicalId, serial, type, commissioned]
+
+``` FANC information ```
+|append [|inputlookup prod_devices_fanc.csv
+|eval environment="prod" 
+|append [|inputlookup devices_fanc.csv
+|eval environment="staging"]
+|search buildingId=$buildingId$ environment=$environment$
+|rename device_status_registration_status as commissioned, device_status_network_status as status
+|table buildingId, controlPanelId, deviceType, logicalId, serial, type, commissioned]
+
+```PDU Information ```
+|append [|inputlookup prod_devices_pdu.csv
+|eval environment="prod" 
+|append [|inputlookup devices_pdu.csv
+|eval environment="staging"]
+|search buildingId=$buildingId$ environment=$environment$
+|table buildingId, controlPanelId, deviceType, logicalId, serial, type, commissioned, status]
+
+| fillnull value=NULL
+
+|join type=left buildingId controlPanelId [|inputlookup prod_devices_cp.csv
+|eval environment="prod" 
+|append [|inputlookup devices_cp.csv
+|eval environment="staging"]
+|search buildingId=$buildingId$ environment=$environment$
+|rename uniqueId as controlPanelId logicalId as cp_name
+|table buildingId, cp_name, controlPanelId]
+
+|table buildingId, cp_name, controlPanelId, deviceType, logicalId, serial, type, commissioned, status
+
+|stats list(deviceType) as deviceType list(logicalId) as logicalId, list(serial) as serial, list(type) as type, list(commissioned) as commissioned list(status) as status by buildingId, cp_name
+
+|append [|inputlookup prod_devices_skysensor.csv
+|eval environment="prod" 
+|append [|inputlookup devices_skysensor.csv
+|eval environment="staging"]
+|search buildingId=$buildingId$ environment=$environment$
+|table buildingId, controlPanelId, deviceType, logicalId, serial, type, commissioned, status]</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_mapping">
+      <html>
+                <style>
+                    #header_mapping .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Mapping and Endpoint Registration</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>Logical IGUs in Configuration</title>
+        <search>
+          <query>|inputlookup prod_devices_igu.csv
+|eval environment="prod"
+|append [|inputlookup devices_igu.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename serial as iguLiteId
+|rex field=logicalId "(e_igu|IGU)_(?&lt;igu_name&gt;.+)\_.+"
+|rex field=name "IGU-IGU_(?&lt;floor&gt;\d+)"
+|rex field=igu_name "\d+(?&lt;facade&gt;\D+)\d+"
+|table buildingId, dimensions, logicalId, iguLiteId, igu_name, floor, facade, networkId
+
+|rex field=rEquivalent ".+r_equivalent\":(?&lt;r_equivalent_value&gt;\d+.\d+),.+"
+
+|join type=left networkId [|inputlookup prod_devices_networks_nwc.csv 
+|eval environment="prod"
+|append [|inputlookup devices_networks_nwc.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$ 
+|rename properties_globalProperties_ipAddress as ipAddress, properties_globalProperties_ipNetmask as ipNetmask, properties_globalProperties_ipGateway as ipGateway, properties_globalProperties_macAddress as macAddress, properties_globalProperties_manufacturer as manufacturer, properties_localProperties_iguLiteId as iguLiteId properties_localProperties_iguStatus AS iguStatus properties_localProperties_iguHeight as iguHeight properties_localProperties_iguWidth as iguWidth properties_localProperties_iguBusBarHeight as iguBusBarHeight properties_localProperties_iguArea as iguArea, properties_localProperties_ghnTrunkId as ghnTrunkId properties_localProperties_ghnTrunkMacAddress as ghnTrunkMacAddress
+properties_localProperties_rEquivalent as rEquivalent properties_localProperties_ghnWireLength as ghnWireLength properties_localProperties_voffset as voffset
+properties_globalProperties_submodules_MCU_version as MCU_version
+device_status_health_status as health_status, device_status_installation_status as installation_status, device_status_network_status as network_status, device_status_registration_status as registration_status
+|rename uniqueId as networkId]
+
+|join type=left zoneId [|inputlookup prod_devices_zones.csv
+|eval environment="prod"
+|append [|inputlookup devices_zones.csv
+|eval environment="staging"]
+|search environment=$environment$
+|dedup uniqueId
+|rename uniqueId as zoneId, name as zone_name
+|table buildingId, zoneId, zone_name]
+
+``` TRUNK INFO ```
+|join type=left trunkId [|inputlookup prod_devices_trunks.csv
+|eval environment="prod"
+|append [|inputlookup devices_trunks.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename trunkId as cphe_port
+|rename uniqueId as trunkId
+|table cphe_port, trunkId, cpheId]
+
+``` CPHE INFO ```
+|join type=left cpheId [|inputlookup prod_devices_cphe.csv
+|eval environment="prod"
+|append [|inputlookup devices_cphe.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename type as cphe_type, serial as cphe_serial, uniqueId as cpheId
+|table cpheId, cphe_serial, cphe_type, controlPanelId]
+
+``` CONTROL PANEL INFO ```
+|join type=left controlPanelId [|inputlookup prod_devices_cp.csv
+|eval environment="prod"
+|append [|inputlookup devices_cp.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rex field=logicalId "(?&lt;cp_name&gt;.+)_\d+"
+|rename uniqueId as controlPanelId
+|table cp_name, controlPanelId]
+
+|search iguLiteId=$iguLiteId$ 
+|search ghnTrunkMacAddress=$ghnTrunkMacAddress$ 
+|search zoneId=$zoneId$
+|search macAddress=$macAddress$ 
+|search igu_name=$igu_name$
+|search floor=$floor$
+|search facade=$facade$
+
+| spath input=voffset output=t2_baseline_target_voltage path=t2_baseline_target_voltage
+| spath input=voffset output=t2_voltage_offset path=t2_voltage_offset
+| spath input=voffset output=t3_baseline_target_voltage path=t3_baseline_target_voltage
+| spath input=voffset output=t3_voltage_offset path=t3_voltage_offset
+| spath input=voffset output=t4_baseline_target_voltage path=t4_baseline_target_voltage
+| spath input=voffset output=t4_voltage_offset path=t4_voltage_offset
+
+
+|table buildingId, logicalId, floor, facade, igu_name, logicalId, macAddress, commissioned, ipAddress, iguLiteId, iguStatus, iguHeight, iguWidth, iguBusBarHeight, iguArea, zoneId, zone_name, ghnTrunkId, ghnTrunkMacAddress, cphe_serial, cphe_type, controlPanelId, cp_name, rEquivalent, ghnWireLength, voffset, r_equivalent_value, t2_baseline_target_voltage, t2_voltage_offset, t3_baseline_target_voltage, t3_voltage_offset, t4_baseline_target_voltage, t4_voltage_offset, MCU_version, health_status, installation_status, network_status, registration_status
+|fields buildingId, igu_name, macAddress, commissioned, iguLiteId
+|stats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Lite IDs Mapped</title>
+        <search>
+          <query>|inputlookup prod_devices_igu.csv
+|eval environment="prod"
+|append [|inputlookup devices_igu.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename serial as iguLiteId
+|rex field=logicalId "(e_igu|IGU)_(?&lt;igu_name&gt;.+)\_.+"
+|rex field=name "IGU-IGU_(?&lt;floor&gt;\d+)"
+|rex field=igu_name "\d+(?&lt;facade&gt;\D+)\d+"
+|table buildingId, dimensions, logicalId, iguLiteId, igu_name, floor, facade, networkId
+
+|rex field=rEquivalent ".+r_equivalent\":(?&lt;r_equivalent_value&gt;\d+.\d+),.+"
+
+|join type=left networkId [|inputlookup prod_devices_networks_nwc.csv 
+|eval environment="prod"
+|append [|inputlookup devices_networks_nwc.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$ 
+|rename properties_globalProperties_ipAddress as ipAddress, properties_globalProperties_ipNetmask as ipNetmask, properties_globalProperties_ipGateway as ipGateway, properties_globalProperties_macAddress as macAddress, properties_globalProperties_manufacturer as manufacturer, properties_localProperties_iguLiteId as nwcLiteId properties_localProperties_iguStatus AS iguStatus properties_localProperties_iguHeight as iguHeight properties_localProperties_iguWidth as iguWidth properties_localProperties_iguBusBarHeight as iguBusBarHeight properties_localProperties_iguArea as iguArea, properties_localProperties_ghnTrunkId as ghnTrunkId properties_localProperties_ghnTrunkMacAddress as ghnTrunkMacAddress
+properties_localProperties_rEquivalent as rEquivalent properties_localProperties_ghnWireLength as ghnWireLength properties_localProperties_voffset as voffset
+properties_globalProperties_submodules_MCU_version as MCU_version
+device_status_health_status as health_status, device_status_installation_status as installation_status, device_status_network_status as network_status, device_status_registration_status as registration_status
+|rename uniqueId as networkId]
+
+|join type=left zoneId [|inputlookup prod_devices_zones.csv
+|eval environment="prod"
+|append [|inputlookup devices_zones.csv
+|eval environment="staging"]
+|search environment=$environment$
+|dedup uniqueId
+|rename uniqueId as zoneId, name as zone_name
+|table buildingId, zoneId, zone_name]
+
+``` TRUNK INFO ```
+|join type=left trunkId [|inputlookup prod_devices_trunks.csv
+|eval environment="prod"
+|append [|inputlookup devices_trunks.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename trunkId as cphe_port
+|rename uniqueId as trunkId
+|table cphe_port, trunkId, cpheId]
+
+``` CPHE INFO ```
+|join type=left cpheId [|inputlookup prod_devices_cphe.csv
+|eval environment="prod"
+|append [|inputlookup devices_cphe.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename type as cphe_type, serial as cphe_serial, uniqueId as cpheId
+|table cpheId, cphe_serial, cphe_type, controlPanelId]
+
+``` CONTROL PANEL INFO ```
+|join type=left controlPanelId [|inputlookup prod_devices_cp.csv
+|eval environment="prod"
+|append [|inputlookup devices_cp.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rex field=logicalId "(?&lt;cp_name&gt;.+)_\d+"
+|rename uniqueId as controlPanelId
+|table cp_name, controlPanelId]
+
+|search iguLiteId=$iguLiteId$ 
+|search ghnTrunkMacAddress=$ghnTrunkMacAddress$ 
+|search zoneId=$zoneId$
+|search macAddress=$macAddress$ 
+|search igu_name=$igu_name$
+|search floor=$floor$
+|search facade=$facade$
+
+| spath input=voffset output=t2_baseline_target_voltage path=t2_baseline_target_voltage
+| spath input=voffset output=t2_voltage_offset path=t2_voltage_offset
+| spath input=voffset output=t3_baseline_target_voltage path=t3_baseline_target_voltage
+| spath input=voffset output=t3_voltage_offset path=t3_voltage_offset
+| spath input=voffset output=t4_baseline_target_voltage path=t4_baseline_target_voltage
+| spath input=voffset output=t4_voltage_offset path=t4_voltage_offset
+
+
+|table buildingId, logicalId, floor, facade, igu_name, logicalId, macAddress, commissioned, ipAddress, iguLiteId, nwcLiteId, iguStatus, iguHeight, iguWidth, iguBusBarHeight, iguArea, zoneId, zone_name, ghnTrunkId, ghnTrunkMacAddress, cphe_serial, cphe_type, controlPanelId, cp_name, rEquivalent, ghnWireLength, voffset, r_equivalent_value, t2_baseline_target_voltage, t2_voltage_offset, t3_baseline_target_voltage, t3_voltage_offset, t4_baseline_target_voltage, t4_voltage_offset, MCU_version, health_status, installation_status, network_status, registration_status
+|where isnotnull(nwcLiteId)
+|fields buildingId, igu_name, macAddress, commissioned, nwcLiteId
+|stats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Lite IDs Unmapped</title>
+        <search>
+          <query>|inputlookup prod_devices_igu.csv
+|eval environment="prod"
+|append [|inputlookup devices_igu.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename serial as mappedLiteId
+|rex field=logicalId "(e_igu|IGU)_(?&lt;igu_name&gt;.+)\_.+"
+|rex field=name "IGU-IGU_(?&lt;floor&gt;\d+)"
+|rex field=igu_name "\d+(?&lt;facade&gt;\D+)\d+"
+|table buildingId, dimensions, logicalId, mappedLiteId, igu_name, floor, facade, networkId
+
+|rex field=rEquivalent ".+r_equivalent\":(?&lt;r_equivalent_value&gt;\d+.\d+),.+"
+
+|join type=left networkId [|inputlookup prod_devices_networks_nwc.csv 
+|eval environment="prod"
+|append [|inputlookup devices_networks_nwc.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename properties_globalProperties_ipAddress as ipAddress, properties_globalProperties_ipNetmask as ipNetmask, properties_globalProperties_ipGateway as ipGateway, properties_globalProperties_macAddress as macAddress, properties_globalProperties_manufacturer as manufacturer, properties_localProperties_iguLiteId as iguLiteId properties_localProperties_iguStatus AS iguStatus properties_localProperties_iguHeight as iguHeight properties_localProperties_iguWidth as iguWidth properties_localProperties_iguBusBarHeight as iguBusBarHeight properties_localProperties_iguArea as iguArea, properties_localProperties_ghnTrunkId as ghnTrunkId properties_localProperties_ghnTrunkMacAddress as ghnTrunkMacAddress
+properties_localProperties_rEquivalent as rEquivalent properties_localProperties_ghnWireLength as ghnWireLength properties_localProperties_voffset as voffset
+properties_globalProperties_submodules_MCU_version as MCU_version
+device_status_health_status as health_status, device_status_installation_status as installation_status, device_status_network_status as network_status, device_status_registration_status as registration_status, logicalId as logicalId_nwc, iguLiteId as iguLiteId_nwc
+|rename uniqueId as networkId]
+
+|table buildingId, dimensions, logicalId, mappedLiteId, igu_name, floor, facade, networkId, logicalId_nwc, iguLiteId_nwc
+
+
+|eval is_mapped=if(isnotnull(iguLiteId_nwc),1,0)
+|eval is_not_mapped=if(isnull(iguLiteId_nwc),1,0)
+|where is_not_mapped=1 
+|table logicalId, igu_name, floor, facade, mappedLiteId, iguLiteId_nwc
+|sort floor, facade
+|stats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>NWCs Undiscovered</title>
+        <search>
+          <query>|inputlookup prod_devices_igu.csv
+|eval environment="prod"
+|append [|inputlookup devices_igu.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename serial as mappedLiteId
+|rex field=logicalId "(e_igu|IGU)_(?&lt;igu_name&gt;.+)\_.+"
+|rex field=name "IGU-IGU_(?&lt;floor&gt;\d+)"
+|rex field=igu_name "\d+(?&lt;facade&gt;\D+)\d+"
+|table buildingId, dimensions, logicalId, mappedLiteId, igu_name, floor, facade, networkId
+
+|rex field=rEquivalent ".+r_equivalent\":(?&lt;r_equivalent_value&gt;\d+.\d+),.+"
+
+|join type=left networkId [|inputlookup prod_devices_networks_nwc.csv 
+|eval environment="prod"
+|append [|inputlookup devices_networks_nwc.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename properties_globalProperties_ipAddress as ipAddress, properties_globalProperties_ipNetmask as ipNetmask, properties_globalProperties_ipGateway as ipGateway, properties_globalProperties_macAddress as macAddress, properties_globalProperties_manufacturer as manufacturer, properties_localProperties_iguLiteId as iguLiteId properties_localProperties_iguStatus AS iguStatus properties_localProperties_iguHeight as iguHeight properties_localProperties_iguWidth as iguWidth properties_localProperties_iguBusBarHeight as iguBusBarHeight properties_localProperties_iguArea as iguArea, properties_localProperties_ghnTrunkId as ghnTrunkId properties_localProperties_ghnTrunkMacAddress as ghnTrunkMacAddress
+properties_localProperties_rEquivalent as rEquivalent properties_localProperties_ghnWireLength as ghnWireLength properties_localProperties_voffset as voffset
+properties_globalProperties_submodules_MCU_version as MCU_version
+device_status_health_status as health_status, device_status_installation_status as installation_status, device_status_network_status as network_status, device_status_registration_status as registration_status, logicalId as logicalId_nwc, iguLiteId as iguLiteId_nwc
+|rename uniqueId as networkId]
+
+|table buildingId, dimensions, logicalId, mappedLiteId, igu_name, floor, facade, networkId, logicalId_nwc, iguLiteId_nwc
+
+
+|eval is_mapped=if(isnotnull(iguLiteId_nwc),1,0)
+|eval is_not_mapped=if(isnull(iguLiteId_nwc),1,0)
+|where is_not_mapped=1 
+|table logicalId, igu_name, floor, facade, mappedLiteId, iguLiteId_nwc
+|sort floor, facade
+|stats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>NWCs Unregistered</title>
+        <search>
+          <query>|inputlookup prod_devices_igu.csv
+|eval environment="prod"
+|append [|inputlookup devices_igu.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename serial as iguLiteId
+|rex field=logicalId "(e_igu|IGU)_(?&lt;igu_name&gt;.+)\_.+"
+|rex field=name "IGU-IGU_(?&lt;floor&gt;\d+)"
+|rex field=igu_name "\d+(?&lt;facade&gt;\D+)\d+"
+|table buildingId, dimensions, logicalId, iguLiteId, igu_name, floor, facade, networkId
+
+|rex field=rEquivalent ".+r_equivalent\":(?&lt;r_equivalent_value&gt;\d+.\d+),.+"
+
+|join type=left networkId [|inputlookup prod_devices_networks_nwc.csv 
+|eval environment="prod"
+|append [|inputlookup devices_networks_nwc.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$ 
+|rename properties_globalProperties_ipAddress as ipAddress, properties_globalProperties_ipNetmask as ipNetmask, properties_globalProperties_ipGateway as ipGateway, properties_globalProperties_macAddress as macAddress, properties_globalProperties_manufacturer as manufacturer, properties_localProperties_iguLiteId as iguLiteId properties_localProperties_iguStatus AS iguStatus properties_localProperties_iguHeight as iguHeight properties_localProperties_iguWidth as iguWidth properties_localProperties_iguBusBarHeight as iguBusBarHeight properties_localProperties_iguArea as iguArea, properties_localProperties_ghnTrunkId as ghnTrunkId properties_localProperties_ghnTrunkMacAddress as ghnTrunkMacAddress
+properties_localProperties_rEquivalent as rEquivalent properties_localProperties_ghnWireLength as ghnWireLength properties_localProperties_voffset as voffset
+properties_globalProperties_submodules_MCU_version as MCU_version
+device_status_health_status as health_status, device_status_installation_status as installation_status, device_status_network_status as network_status, device_status_registration_status as registration_status
+|rename uniqueId as networkId]
+
+|join type=left zoneId [|inputlookup prod_devices_zones.csv
+|eval environment="prod"
+|append [|inputlookup devices_zones.csv
+|eval environment="staging"]
+|dedup uniqueId
+|search environment=$environment$
+|dedup uniqueId
+|rename uniqueId as zoneId, name as zone_name
+|table buildingId, zoneId, zone_name]
+
+``` TRUNK INFO ```
+|join type=left trunkId [|inputlookup prod_devices_trunks.csv
+|eval environment="prod"
+|append [|inputlookup devices_trunks.csv
+|eval environment="staging"]
+|dedup uniqueId
+|search environment=$environment$
+|rename trunkId as cphe_port
+|rename uniqueId as trunkId
+|table cphe_port, trunkId, cpheId]
+
+``` CPHE INFO ```
+|join type=left cpheId [|inputlookup prod_devices_cphe.csv
+|eval environment="prod"
+|append [|inputlookup devices_cphe.csv
+|eval environment="staging"]
+|dedup uniqueId
+|search environment=$environment$
+|rename type as cphe_type, serial as cphe_serial, uniqueId as cpheId
+|table cpheId, cphe_serial, cphe_type, controlPanelId]
+
+``` CONTROL PANEL INFO ```
+|join type=left controlPanelId [|inputlookup prod_devices_cp.csv
+|eval environment="prod"
+|append [|inputlookup devices_cp.csv
+|eval environment="staging"]
+|dedup uniqueId
+|search environment=$environment$
+|rex field=logicalId "(?&lt;cp_name&gt;.+)_\d+"
+|rename uniqueId as controlPanelId
+|table cp_name, controlPanelId]
+
+| spath input=voffset output=t2_baseline_target_voltage path=t2_baseline_target_voltage
+| spath input=voffset output=t2_voltage_offset path=t2_voltage_offset
+| spath input=voffset output=t3_baseline_target_voltage path=t3_baseline_target_voltage
+| spath input=voffset output=t3_voltage_offset path=t3_voltage_offset
+| spath input=voffset output=t4_baseline_target_voltage path=t4_baseline_target_voltage
+| spath input=voffset output=t4_voltage_offset path=t4_voltage_offset
+
+
+|table buildingId, logicalId, floor, facade, igu_name, logicalId, macAddress, commissioned, ipAddress, iguLiteId, iguStatus, iguHeight, iguWidth, iguBusBarHeight, iguArea, zoneId, zone_name, ghnTrunkId, ghnTrunkMacAddress, cphe_serial, cphe_type, controlPanelId, cp_name, rEquivalent, ghnWireLength, voffset, r_equivalent_value, t2_baseline_target_voltage, t2_voltage_offset, t3_baseline_target_voltage, t3_voltage_offset, t4_baseline_target_voltage, t4_voltage_offset, MCU_version, health_status, installation_status, network_status, registration_status
+|where registration_status!="True" 
+|stats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>NWCs Disconnected</title>
+        <search>
+          <query>|inputlookup prod_devices_igu.csv
+|eval environment="prod"
+|append [|inputlookup devices_igu.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename serial as iguLiteId
+|rex field=logicalId "(e_igu|IGU)_(?&lt;igu_name&gt;.+)\_.+"
+|rex field=name "IGU-IGU_(?&lt;floor&gt;\d+)"
+|rex field=igu_name "\d+(?&lt;facade&gt;\D+)\d+"
+|table buildingId, dimensions, logicalId, iguLiteId, igu_name, floor, facade, networkId
+
+|rex field=rEquivalent ".+r_equivalent\":(?&lt;r_equivalent_value&gt;\d+.\d+),.+"
+
+|join type=left networkId [|inputlookup prod_devices_networks_nwc.csv 
+|eval environment="prod"
+|append [|inputlookup devices_networks_nwc.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$ 
+|rename properties_globalProperties_ipAddress as ipAddress, properties_globalProperties_ipNetmask as ipNetmask, properties_globalProperties_ipGateway as ipGateway, properties_globalProperties_macAddress as macAddress, properties_globalProperties_manufacturer as manufacturer, properties_localProperties_iguLiteId as iguLiteId properties_localProperties_iguStatus AS iguStatus properties_localProperties_iguHeight as iguHeight properties_localProperties_iguWidth as iguWidth properties_localProperties_iguBusBarHeight as iguBusBarHeight properties_localProperties_iguArea as iguArea, properties_localProperties_ghnTrunkId as ghnTrunkId properties_localProperties_ghnTrunkMacAddress as ghnTrunkMacAddress
+properties_localProperties_rEquivalent as rEquivalent properties_localProperties_ghnWireLength as ghnWireLength properties_localProperties_voffset as voffset
+properties_globalProperties_submodules_MCU_version as MCU_version
+device_status_health_status as health_status, device_status_installation_status as installation_status, device_status_network_status as network_status, device_status_registration_status as registration_status
+|rename uniqueId as networkId]
+
+|join type=left zoneId [|inputlookup prod_devices_zones.csv
+|eval environment="prod"
+|append [|inputlookup devices_zones.csv
+|eval environment="staging"]
+|dedup uniqueId
+|search environment=$environment$
+|dedup uniqueId
+|rename uniqueId as zoneId, name as zone_name
+|table buildingId, zoneId, zone_name]
+
+``` TRUNK INFO ```
+|join type=left trunkId [|inputlookup prod_devices_trunks.csv
+|eval environment="prod"
+|append [|inputlookup devices_trunks.csv
+|eval environment="staging"]
+|dedup uniqueId
+|search environment=$environment$
+|rename trunkId as cphe_port
+|rename uniqueId as trunkId
+|table cphe_port, trunkId, cpheId]
+
+``` CPHE INFO ```
+|join type=left cpheId [|inputlookup prod_devices_cphe.csv
+|eval environment="prod"
+|append [|inputlookup devices_cphe.csv
+|eval environment="staging"]
+|dedup uniqueId
+|search environment=$environment$
+|rename type as cphe_type, serial as cphe_serial, uniqueId as cpheId
+|table cpheId, cphe_serial, cphe_type, controlPanelId]
+
+``` CONTROL PANEL INFO ```
+|join type=left controlPanelId [|inputlookup prod_devices_cp.csv
+|eval environment="prod"
+|append [|inputlookup devices_cp.csv
+|eval environment="staging"]
+|dedup uniqueId
+|search environment=$environment$
+|rex field=logicalId "(?&lt;cp_name&gt;.+)_\d+"
+|rename uniqueId as controlPanelId
+|table cp_name, controlPanelId]
+
+| spath input=voffset output=t2_baseline_target_voltage path=t2_baseline_target_voltage
+| spath input=voffset output=t2_voltage_offset path=t2_voltage_offset
+| spath input=voffset output=t3_baseline_target_voltage path=t3_baseline_target_voltage
+| spath input=voffset output=t3_voltage_offset path=t3_voltage_offset
+| spath input=voffset output=t4_baseline_target_voltage path=t4_baseline_target_voltage
+| spath input=voffset output=t4_voltage_offset path=t4_voltage_offset
+
+
+|table buildingId, logicalId, floor, facade, igu_name, logicalId, macAddress, commissioned, ipAddress, iguLiteId, iguStatus, iguHeight, iguWidth, iguBusBarHeight, iguArea, zoneId, zone_name, ghnTrunkId, ghnTrunkMacAddress, cphe_serial, cphe_type, controlPanelId, cp_name, rEquivalent, ghnWireLength, voffset, r_equivalent_value, t2_baseline_target_voltage, t2_voltage_offset, t3_baseline_target_voltage, t3_voltage_offset, t4_baseline_target_voltage, t4_voltage_offset, MCU_version, health_status, installation_status, network_status, registration_status
+|where network_status!="connected"
+|stats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Duplicate Lite IDs</title>
+        <search>
+          <query>|inputlookup devices_networks_nwc.csv 
+|eval environment="staging"
+|append [|inputlookup prod_devices_networks_nwc.csv 
+|eval environment="prod"]
+|dedup uniqueId
+|search environment=$environment$ buildingId=$buildingId$ 
+|rename properties_globalProperties_ipAddress as ipAddress, properties_globalProperties_ipNetmask as ipNetmask, properties_globalProperties_ipGateway as ipGateway, properties_globalProperties_macAddress as macAddress, properties_globalProperties_manufacturer as manufacturer, properties_localProperties_iguLiteId as iguLiteId properties_localProperties_iguStatus AS iguStatus properties_localProperties_iguHeight as iguHeight properties_localProperties_iguWidth as iguWidth properties_localProperties_iguBusBarHeight as iguBusBarHeight properties_localProperties_iguArea as iguArea, properties_localProperties_ghnTrunkId as ghnTrunkId properties_localProperties_ghnTrunkMacAddress as ghnTrunkMacAddress
+properties_localProperties_rEquivalent as rEquivalent properties_localProperties_ghnWireLength as ghnWireLength properties_localProperties_voffset as voffset
+properties_globalProperties_submodules_MCU_version as MCU_version
+device_status_health_status as health_status, device_status_installation_status as installation_status, device_status_network_status as network_status, device_status_registration_status as registration_status, device_status_updatedAt as LastUpdated
+|stats count by iguLiteId 
+|where count &gt; 1
+|stats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Disconnected Zones</title>
+        <search>
+          <query>|inputlookup prod_devices_igu.csv
+|eval environment="prod"
+|append [|inputlookup devices_igu.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename serial as iguLiteId
+|rex field=logicalId "(e_igu|IGU)_(?&lt;igu_name&gt;.+)\_.+"
+|rex field=name "IGU-IGU_(?&lt;floor&gt;\d+)"
+|rex field=igu_name "\d+(?&lt;facade&gt;\D+)\d+"
+|table buildingId, dimensions, logicalId, iguLiteId, igu_name, floor, facade, networkId
+
+|rex field=rEquivalent ".+r_equivalent\":(?&lt;r_equivalent_value&gt;\d+.\d+),.+"
+
+|join type=left networkId [|inputlookup prod_devices_networks_nwc.csv 
+|eval environment="prod"
+|append [|inputlookup devices_networks_nwc.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$ 
+|rename properties_globalProperties_ipAddress as ipAddress, properties_globalProperties_ipNetmask as ipNetmask, properties_globalProperties_ipGateway as ipGateway, properties_globalProperties_macAddress as macAddress, properties_globalProperties_manufacturer as manufacturer, properties_localProperties_iguLiteId as iguLiteId properties_localProperties_iguStatus AS iguStatus properties_localProperties_iguHeight as iguHeight properties_localProperties_iguWidth as iguWidth properties_localProperties_iguBusBarHeight as iguBusBarHeight properties_localProperties_iguArea as iguArea, properties_localProperties_ghnTrunkId as ghnTrunkId properties_localProperties_ghnTrunkMacAddress as ghnTrunkMacAddress
+properties_localProperties_rEquivalent as rEquivalent properties_localProperties_ghnWireLength as ghnWireLength properties_localProperties_voffset as voffset
+properties_globalProperties_submodules_MCU_version as MCU_version
+device_status_health_status as health_status, device_status_installation_status as installation_status, device_status_network_status as network_status, device_status_registration_status as registration_status
+|rename uniqueId as networkId]
+
+|join type=left zoneId [|inputlookup prod_devices_zones.csv
+|eval environment="prod"
+|append [|inputlookup devices_zones.csv
+|eval environment="staging"]
+|search environment=$environment$
+|dedup uniqueId
+|rename uniqueId as zoneId, name as zone_name, status as zone_status
+|table zoneId, zone_name, zone_status]
+
+``` TRUNK INFO ```
+|join type=left trunkId [|inputlookup prod_devices_trunks.csv
+|eval environment="prod"
+|append [|inputlookup devices_trunks.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename trunkId as cphe_port
+|rename uniqueId as trunkId
+|table cphe_port, trunkId, cpheId]
+
+``` CPHE INFO ```
+|join type=left cpheId [|inputlookup prod_devices_cphe.csv
+|eval environment="prod"
+|append [|inputlookup devices_cphe.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename type as cphe_type, serial as cphe_serial, uniqueId as cpheId
+|table cpheId, cphe_serial, cphe_type, controlPanelId]
+
+``` CONTROL PANEL INFO ```
+|join type=left controlPanelId [|inputlookup prod_devices_cp.csv
+|eval environment="prod"
+|append [|inputlookup devices_cp.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rex field=logicalId "(?&lt;cp_name&gt;.+)_\d+"
+|rename uniqueId as controlPanelId
+|table cp_name, controlPanelId]
+
+| spath input=voffset output=t2_baseline_target_voltage path=t2_baseline_target_voltage
+| spath input=voffset output=t2_voltage_offset path=t2_voltage_offset
+| spath input=voffset output=t3_baseline_target_voltage path=t3_baseline_target_voltage
+| spath input=voffset output=t3_voltage_offset path=t3_voltage_offset
+| spath input=voffset output=t4_baseline_target_voltage path=t4_baseline_target_voltage
+| spath input=voffset output=t4_voltage_offset path=t4_voltage_offset
+
+
+|join type=left buildingId macAddress [search index=sensor_nwc earliest=-60m
+|search buildingId=$buildingId$
+|dedup serial
+|where serial!="serial"
+|rename _time as time
+|table buildingId, serial, command, state, time
+|eval state=round(state,0)
+|eval command=round(command,0)
+|join type=left state [|inputlookup WC_States.csv
+|rename State as state
+|table state, State_Definition]
+|rename serial as macAddress
+|eval timestamp=strftime(time,"%Y-%m-%d %H:%M:%S")
+|table buildingId, macAddress, command, state, State_Definition, timestamp]
+
+|table buildingId, logicalId, floor, facade, igu_name, logicalId, macAddress, commissioned, ipAddress, iguLiteId, iguStatus, iguHeight, iguWidth, iguBusBarHeight, iguArea, zoneId, zone_name, ghnTrunkId, ghnTrunkMacAddress, cphe_serial, cphe_type, controlPanelId, cp_name, rEquivalent, ghnWireLength, voffset, r_equivalent_value, t2_baseline_target_voltage, t2_voltage_offset, t3_baseline_target_voltage, t3_voltage_offset, t4_baseline_target_voltage, t4_voltage_offset, MCU_version, health_status, installation_status, network_status, registration_status, zone_status, LastUpdated, command, state, State_Definition, timestamp
+|where zone_status!="connected"
+|dedup zoneId
+|stats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>View Floors</title>
+        <search>
+          <query>|inputlookup prod_devices_igu.csv
+|eval environment="prod"
+|append [|inputlookup devices_igu.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename serial as iguLiteId
+|rex field=logicalId "(e_igu|IGU)_(?&lt;igu_name&gt;.+)\_.+"
+|rex field=name "IGU-IGU_(?&lt;floor&gt;\d+)"
+|rex field=igu_name "\d+(?&lt;facade&gt;\D+)\d+"
+|table buildingId, dimensions, logicalId, iguLiteId, igu_name, floor, facade, networkId
+
+|rex field=rEquivalent ".+r_equivalent\":(?&lt;r_equivalent_value&gt;\d+.\d+),.+"
+
+|join type=left networkId [|inputlookup prod_devices_networks_nwc.csv 
+|eval environment="prod"
+|append [|inputlookup devices_networks_nwc.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$ 
+|rename properties_globalProperties_ipAddress as ipAddress, properties_globalProperties_ipNetmask as ipNetmask, properties_globalProperties_ipGateway as ipGateway, properties_globalProperties_macAddress as macAddress, properties_globalProperties_manufacturer as manufacturer, properties_localProperties_iguLiteId as iguLiteId properties_localProperties_iguStatus AS iguStatus properties_localProperties_iguHeight as iguHeight properties_localProperties_iguWidth as iguWidth properties_localProperties_iguBusBarHeight as iguBusBarHeight properties_localProperties_iguArea as iguArea, properties_localProperties_ghnTrunkId as ghnTrunkId properties_localProperties_ghnTrunkMacAddress as ghnTrunkMacAddress
+properties_localProperties_rEquivalent as rEquivalent properties_localProperties_ghnWireLength as ghnWireLength properties_localProperties_voffset as voffset
+properties_globalProperties_submodules_MCU_version as MCU_version
+device_status_health_status as health_status, device_status_installation_status as installation_status, device_status_network_status as network_status, device_status_registration_status as registration_status
+|rename uniqueId as networkId]
+
+|join type=left zoneId [|inputlookup prod_devices_zones.csv
+|eval environment="prod"
+|append [|inputlookup devices_zones.csv
+|eval environment="staging"]
+|search environment=$environment$
+|dedup uniqueId
+|rename uniqueId as zoneId, name as zone_name
+|table buildingId, zoneId, zone_name]
+
+``` TRUNK INFO ```
+|join type=left trunkId [|inputlookup prod_devices_trunks.csv
+|eval environment="prod"
+|append [|inputlookup devices_trunks.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename trunkId as cphe_port
+|rename uniqueId as trunkId
+|table cphe_port, trunkId, cpheId]
+
+``` CPHE INFO ```
+|join type=left cpheId [|inputlookup prod_devices_cphe.csv
+|eval environment="prod"
+|append [|inputlookup devices_cphe.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename type as cphe_type, serial as cphe_serial, uniqueId as cpheId
+|table cpheId, cphe_serial, cphe_type, controlPanelId]
+
+``` CONTROL PANEL INFO ```
+|join type=left controlPanelId [|inputlookup prod_devices_cp.csv
+|eval environment="prod"
+|append [|inputlookup devices_cp.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rex field=logicalId "(?&lt;cp_name&gt;.+)_\d+"
+|rename uniqueId as controlPanelId
+|table cp_name, controlPanelId]
+
+| spath input=voffset output=t2_baseline_target_voltage path=t2_baseline_target_voltage
+| spath input=voffset output=t2_voltage_offset path=t2_voltage_offset
+| spath input=voffset output=t3_baseline_target_voltage path=t3_baseline_target_voltage
+| spath input=voffset output=t3_voltage_offset path=t3_voltage_offset
+| spath input=voffset output=t4_baseline_target_voltage path=t4_baseline_target_voltage
+| spath input=voffset output=t4_voltage_offset path=t4_voltage_offset
+
+
+|table buildingId, logicalId, floor, facade, igu_name, logicalId, macAddress, commissioned, ipAddress, iguLiteId, iguStatus, iguHeight, iguWidth, iguBusBarHeight, iguArea, zoneId, zone_name, ghnTrunkId, ghnTrunkMacAddress, cphe_serial, cphe_type, controlPanelId, cp_name, rEquivalent, ghnWireLength, voffset, r_equivalent_value, t2_baseline_target_voltage, t2_voltage_offset, t3_baseline_target_voltage, t3_voltage_offset, t4_baseline_target_voltage, t4_voltage_offset, MCU_version, health_status, installation_status, network_status, registration_status
+|stats dc(floor)</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Mapping Status by Floor</title>
+        <search>
+          <query>|inputlookup prod_devices_igu.csv
+|eval environment="prod"
+|append [|inputlookup devices_igu.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename serial as iguLiteId
+|rex field=logicalId "(e_igu|IGU)_(?&lt;igu_name&gt;.+)\_.+"
+|rex field=name "IGU-IGU_(?&lt;floor&gt;\d+)"
+|rex field=igu_name "\d+(?&lt;facade&gt;\D+)\d+"
+|table buildingId, dimensions, logicalId, iguLiteId, igu_name, floor, facade, networkId
+
+|rex field=rEquivalent ".+r_equivalent\":(?&lt;r_equivalent_value&gt;\d+.\d+),.+"
+
+|join type=left networkId [|inputlookup prod_devices_networks_nwc.csv 
+|eval environment="prod"
+|append [|inputlookup devices_networks_nwc.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename properties_globalProperties_ipAddress as ipAddress, properties_globalProperties_ipNetmask as ipNetmask, properties_globalProperties_ipGateway as ipGateway, properties_globalProperties_macAddress as macAddress, properties_globalProperties_manufacturer as manufacturer, properties_localProperties_iguLiteId as iguLiteId properties_localProperties_iguStatus AS iguStatus properties_localProperties_iguHeight as iguHeight properties_localProperties_iguWidth as iguWidth properties_localProperties_iguBusBarHeight as iguBusBarHeight properties_localProperties_iguArea as iguArea, properties_localProperties_ghnTrunkId as ghnTrunkId properties_localProperties_ghnTrunkMacAddress as ghnTrunkMacAddress
+properties_localProperties_rEquivalent as rEquivalent properties_localProperties_ghnWireLength as ghnWireLength properties_localProperties_voffset as voffset
+properties_globalProperties_submodules_MCU_version as MCU_version
+device_status_health_status as health_status, device_status_installation_status as installation_status, device_status_network_status as network_status, device_status_registration_status as registration_status, logicalId as logicalId_nwc, iguLiteId as iguLiteId_nwc
+|rename uniqueId as networkId]
+
+|table buildingId, dimensions, logicalId, iguLiteId, igu_name, floor, facade, networkId, logicalId_nwc, iguLiteId_nwc
+
+
+|eval is_mapped=if(isnotnull(iguLiteId_nwc),1,0)
+|eval is_not_mapped=if(isnull(iguLiteId_nwc),1,0)
+|stats sum(is_mapped) as mapped sum(is_not_mapped) as not_mapped by floor
+|eval total_igus=mapped+not_mapped
+|eval percent_mapped=(mapped/total_igus)*100
+|sort floor ASC</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Unmapped IGU List</title>
+        <search>
+          <query>|inputlookup prod_devices_igu.csv
+|eval environment="prod"
+|append [|inputlookup devices_igu.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename serial as mappedLiteId
+|rex field=logicalId "(e_igu|IGU)_(?&lt;igu_name&gt;.+)\_.+"
+|rex field=name "IGU-IGU_(?&lt;floor&gt;\d+)"
+|rex field=igu_name "\d+(?&lt;facade&gt;\D+)\d+"
+|table buildingId, dimensions, logicalId, mappedLiteId, igu_name, floor, facade, networkId
+
+|rex field=rEquivalent ".+r_equivalent\":(?&lt;r_equivalent_value&gt;\d+.\d+),.+"
+
+|join type=left networkId [|inputlookup prod_devices_networks_nwc.csv 
+|eval environment="prod"
+|append [|inputlookup devices_networks_nwc.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename properties_globalProperties_ipAddress as ipAddress, properties_globalProperties_ipNetmask as ipNetmask, properties_globalProperties_ipGateway as ipGateway, properties_globalProperties_macAddress as macAddress, properties_globalProperties_manufacturer as manufacturer, properties_localProperties_iguLiteId as iguLiteId properties_localProperties_iguStatus AS iguStatus properties_localProperties_iguHeight as iguHeight properties_localProperties_iguWidth as iguWidth properties_localProperties_iguBusBarHeight as iguBusBarHeight properties_localProperties_iguArea as iguArea, properties_localProperties_ghnTrunkId as ghnTrunkId properties_localProperties_ghnTrunkMacAddress as ghnTrunkMacAddress
+properties_localProperties_rEquivalent as rEquivalent properties_localProperties_ghnWireLength as ghnWireLength properties_localProperties_voffset as voffset
+properties_globalProperties_submodules_MCU_version as MCU_version
+device_status_health_status as health_status, device_status_installation_status as installation_status, device_status_network_status as network_status, device_status_registration_status as registration_status, logicalId as logicalId_nwc, iguLiteId as iguLiteId_nwc
+|rename uniqueId as networkId]
+
+|table buildingId, dimensions, logicalId, mappedLiteId, igu_name, floor, facade, networkId, logicalId_nwc, iguLiteId_nwc
+
+
+|eval is_mapped=if(isnotnull(iguLiteId_nwc),1,0)
+|eval is_not_mapped=if(isnull(iguLiteId_nwc),1,0)
+|where is_not_mapped=1 
+|table logicalId, igu_name, floor, facade, mappedLiteId, iguLiteId_nwc
+|sort floor, facade</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_trunk">
+      <html>
+                <style>
+                    #header_trunk .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Trunk Explorer</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="multiselect" token="fields">
+        <label>Field Selection</label>
+        <choice value="floor, facade">Location Information</choice>
+        <choice value="zone_name, zone_status">Zone Information</choice>
+        <choice value="ghnTrunkId, ghnTrunkMacAddress">Trunk Information</choice>
+        <choice value="cphe_serial, cphe_type">CPHE Information</choice>
+        <choice value="iguLiteId, iguStatus, iguHeight, iguWidth, iguBusBarHeight, iguArea">IGU Information</choice>
+        <choice value="cp_name">Control Panel Info</choice>
+        <choice value="t2_baseline_target_voltage, t2_voltage_offset, t3_baseline_target_voltage, t3_voltage_offset, t4_baseline_target_voltage, t4_voltage_offset">Voltage Offsets</choice>
+        <choice value="ghnWireLength, r_equivalent_value">Wire Lengths</choice>
+        <choice value="ipAddress, MCU_version">NWC Info</choice>
+        <choice value="health_status, installation_status, network_status, registration_status, LastUpdated">Device Status</choice>
+        <choice value="command, state, State_Definition, timestamp">NWC State</choice>
+        <delimiter>, </delimiter>
+        <default>"ipAddress, MCU_version","iguLiteId, iguStatus, iguHeight, iguWidth, iguBusBarHeight, iguArea","ghnTrunkId, ghnTrunkMacAddress","floor, facade","health_status, installation_status, network_status, registration_status, LastUpdated","zone_name, zone_status"</default>
+      </input>
+      <input type="dropdown" token="facade" searchWhenChanged="true">
+        <label>Facade</label>
+        <choice value="*&quot; OR NOT facade=&quot;*">All</choice>
+        <default>*" OR NOT facade="*</default>
+        <prefix>"</prefix>
+        <suffix>"</suffix>
+        <fieldForLabel>facade</fieldForLabel>
+        <fieldForValue>facade</fieldForValue>
+        <search>
+          <query>|inputlookup prod_devices_igu.csv
+|eval environment="prod"
+|append [|inputlookup devices_igu.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename serial as iguLiteId
+|rex field=logicalId "(e_igu|IGU)_(?&lt;igu_name&gt;.+)\_.+"
+|rex field=name "IGU-IGU_(?&lt;floor&gt;\d+)"
+|rex field=igu_name "\d+(?&lt;facade&gt;\D+)\d+"
+|table buildingId, dimensions, logicalId, iguLiteId, igu_name, floor, facade
+
+|rex field=rEquivalent ".+r_equivalent\":(?&lt;r_equivalent_value&gt;\d+.\d+),.+"
+
+|join type=left iguLiteId [|inputlookup devices_networks_nwc.csv 
+|eval environment="staging"
+|append [|inputlookup prod_devices_networks_nwc.csv 
+|eval environment="prod"]
+|search environment=$environment$ buildingId=$buildingId$ 
+|rename properties_globalProperties_ipAddress as ipAddress, properties_globalProperties_ipNetmask as ipNetmask, properties_globalProperties_ipGateway as ipGateway, properties_globalProperties_macAddress as macAddress, properties_globalProperties_manufacturer as manufacturer, properties_localProperties_iguLiteId as iguLiteId properties_localProperties_iguStatus AS iguStatus properties_localProperties_iguHeight as iguHeight properties_localProperties_iguWidth as iguWidth properties_localProperties_iguBusBarHeight as iguBusBarHeight properties_localProperties_iguArea as iguArea, properties_localProperties_ghnTrunkId as ghnTrunkId properties_localProperties_ghnTrunkMacAddress as ghnTrunkMacAddress
+properties_localProperties_rEquivalent as rEquivalent properties_localProperties_ghnWireLength as ghnWireLength properties_localProperties_voffset as voffset
+properties_globalProperties_submodules_MCU_version as MCU_version
+device_status_health_status as health_status, device_status_installation_status as installation_status, device_status_network_status as network_status, device_status_registration_status as registration_status]
+
+|join type=left zoneId [|inputlookup prod_devices_zones.csv
+|eval environment="prod"
+|append [|inputlookup devices_zones.csv
+|eval environment="staging"]
+|search environment=$environment$
+|dedup uniqueId
+|rename uniqueId as zoneId, name as zone_name
+|table buildingId, zoneId, zone_name]
+
+``` TRUNK INFO ```
+|join type=left trunkId [|inputlookup prod_devices_trunks.csv
+|eval environment="prod"
+|append [|inputlookup devices_trunks.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename trunkId as cphe_port
+|rename uniqueId as trunkId
+|table cphe_port, trunkId, cpheId]
+
+``` CPHE INFO ```
+|join type=left cpheId [|inputlookup prod_devices_cphe.csv
+|eval environment="prod"
+|append [|inputlookup devices_cphe.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename type as cphe_type, serial as cphe_serial, uniqueId as cpheId
+|table cpheId, cphe_serial, cphe_type, controlPanelId]
+
+``` CONTROL PANEL INFO ```
+|join type=left controlPanelId [|inputlookup prod_devices_cp.csv
+|eval environment="prod"
+|append [|inputlookup devices_cp.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rex field=logicalId "(?&lt;cp_name&gt;.+)_\d+"
+|rename uniqueId as controlPanelId
+|table cp_name, controlPanelId]
+
+|search iguLiteId=$iguLiteId$ 
+|search ghnTrunkMacAddress=$ghnTrunkMacAddress$ 
+|search zoneId=$zoneId$
+|search macAddress=$macAddress$ 
+|search igu_name=$igu_name$
+|search floor=$floor$
+
+| spath input=voffset output=t2_baseline_target_voltage path=t2_baseline_target_voltage
+| spath input=voffset output=t2_voltage_offset path=t2_voltage_offset
+| spath input=voffset output=t3_baseline_target_voltage path=t3_baseline_target_voltage
+| spath input=voffset output=t3_voltage_offset path=t3_voltage_offset
+| spath input=voffset output=t4_baseline_target_voltage path=t4_baseline_target_voltage
+| spath input=voffset output=t4_voltage_offset path=t4_voltage_offset
+
+
+|table buildingId, logicalId, floor, facade, igu_name, logicalId, macAddress, commissioned, ipAddress, iguLiteId, iguStatus, iguHeight, iguWidth, iguBusBarHeight, iguArea, zoneId, zone_name, ghnTrunkId, ghnTrunkMacAddress, cphe_serial, cphe_type, controlPanelId, cp_name, rEquivalent, ghnWireLength, voffset, r_equivalent_value, t2_baseline_target_voltage, t2_voltage_offset, t3_baseline_target_voltage, t3_voltage_offset, t4_baseline_target_voltage, t4_voltage_offset, MCU_version, health_status, installation_status, network_status, registration_status
+|dedup facade
+|table facade</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+      </input>
+      <input type="dropdown" token="floor" searchWhenChanged="true">
+        <label>Floor</label>
+        <choice value="*&quot; OR NOT floor=&quot;*">All</choice>
+        <default>*" OR NOT floor="*</default>
+        <prefix>"</prefix>
+        <suffix>"</suffix>
+        <fieldForLabel>floor</fieldForLabel>
+        <fieldForValue>floor</fieldForValue>
+        <search>
+          <query>|inputlookup prod_devices_igu.csv
+|eval environment="prod"
+|append [|inputlookup devices_igu.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename serial as iguLiteId
+|rex field=logicalId "(e_igu|IGU)_(?&lt;igu_name&gt;.+)\_.+"
+|rex field=igu_name "\d+(?&lt;facade&gt;\D+)\d+"
+|rex field=igu_name (?&lt;floor&gt;\d+)\D+\d+
+|table buildingId, dimensions, logicalId, iguLiteId, igu_name, floor, facade
+
+|rex field=rEquivalent ".+r_equivalent\":(?&lt;r_equivalent_value&gt;\d+.\d+),.+"
+
+|join type=left iguLiteId [|inputlookup devices_networks_nwc.csv 
+|eval environment="staging"
+|append [|inputlookup prod_devices_networks_nwc.csv 
+|eval environment="prod"]
+|search environment=$environment$ buildingId=$buildingId$ 
+|rename properties_globalProperties_ipAddress as ipAddress, properties_globalProperties_ipNetmask as ipNetmask, properties_globalProperties_ipGateway as ipGateway, properties_globalProperties_macAddress as macAddress, properties_globalProperties_manufacturer as manufacturer, properties_localProperties_iguLiteId as iguLiteId properties_localProperties_iguStatus AS iguStatus properties_localProperties_iguHeight as iguHeight properties_localProperties_iguWidth as iguWidth properties_localProperties_iguBusBarHeight as iguBusBarHeight properties_localProperties_iguArea as iguArea, properties_localProperties_ghnTrunkId as ghnTrunkId properties_localProperties_ghnTrunkMacAddress as ghnTrunkMacAddress
+properties_localProperties_rEquivalent as rEquivalent properties_localProperties_ghnWireLength as ghnWireLength properties_localProperties_voffset as voffset
+properties_globalProperties_submodules_MCU_version as MCU_version
+device_status_health_status as health_status, device_status_installation_status as installation_status, device_status_network_status as network_status, device_status_registration_status as registration_status]
+
+|join type=left zoneId [|inputlookup prod_devices_zones.csv
+|eval environment="prod"
+|append [|inputlookup devices_zones.csv
+|eval environment="staging"]
+|search environment=$environment$
+|dedup uniqueId
+|rename uniqueId as zoneId, name as zone_name
+|table buildingId, zoneId, zone_name]
+
+``` TRUNK INFO ```
+|join type=left trunkId [|inputlookup prod_devices_trunks.csv
+|eval environment="prod"
+|append [|inputlookup devices_trunks.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename trunkId as cphe_port
+|rename uniqueId as trunkId
+|table cphe_port, trunkId, cpheId]
+
+``` CPHE INFO ```
+|join type=left cpheId [|inputlookup prod_devices_cphe.csv
+|eval environment="prod"
+|append [|inputlookup devices_cphe.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename type as cphe_type, serial as cphe_serial, uniqueId as cpheId
+|table cpheId, cphe_serial, cphe_type, controlPanelId]
+
+``` CONTROL PANEL INFO ```
+|join type=left controlPanelId [|inputlookup prod_devices_cp.csv
+|eval environment="prod"
+|append [|inputlookup devices_cp.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rex field=logicalId "(?&lt;cp_name&gt;.+)_\d+"
+|rename uniqueId as controlPanelId
+|table cp_name, controlPanelId]
+
+|search iguLiteId=$iguLiteId$ 
+|search ghnTrunkMacAddress=$ghnTrunkMacAddress$ 
+|search zoneId=$zoneId$
+|search macAddress=$macAddress$ 
+|search igu_name=$igu_name$
+|search facade=$facade$
+
+| spath input=voffset output=t2_baseline_target_voltage path=t2_baseline_target_voltage
+| spath input=voffset output=t2_voltage_offset path=t2_voltage_offset
+| spath input=voffset output=t3_baseline_target_voltage path=t3_baseline_target_voltage
+| spath input=voffset output=t3_voltage_offset path=t3_voltage_offset
+| spath input=voffset output=t4_baseline_target_voltage path=t4_baseline_target_voltage
+| spath input=voffset output=t4_voltage_offset path=t4_voltage_offset
+
+
+|table buildingId, logicalId, floor, facade, igu_name, logicalId, macAddress, commissioned, ipAddress, iguLiteId, iguStatus, iguHeight, iguWidth, iguBusBarHeight, iguArea, zoneId, zone_name, ghnTrunkId, ghnTrunkMacAddress, cphe_serial, cphe_type, controlPanelId, cp_name, rEquivalent, ghnWireLength, voffset, r_equivalent_value, t2_baseline_target_voltage, t2_voltage_offset, t3_baseline_target_voltage, t3_voltage_offset, t4_baseline_target_voltage, t4_voltage_offset, MCU_version, health_status, installation_status, network_status, registration_status
+|dedup floor
+|table floor
+|sort floor ASC</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+      </input>
+      <input type="dropdown" token="igu_name">
+        <label>IGU Name</label>
+        <prefix>"</prefix>
+        <suffix>"</suffix>
+        <fieldForLabel>igu_name</fieldForLabel>
+        <fieldForValue>igu_name</fieldForValue>
+        <search>
+          <query>|inputlookup prod_devices_igu.csv
+|eval environment="prod"
+|append [|inputlookup devices_igu.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename serial as iguLiteId
+|rex field=logicalId "(e_igu|igu|IGU)_(?&lt;igu_name&gt;\S{1,8})_\d{7,9}"
+|rex field=name "IGU-IGU_(?&lt;floor&gt;\d+)"
+|rex field=igu_name "\d+(?&lt;facade&gt;\D+)\d+"
+|table buildingId, dimensions, logicalId, iguLiteId, igu_name, floor, facade
+
+|rex field=rEquivalent ".+r_equivalent\":(?&lt;r_equivalent_value&gt;\d+.\d+),.+"
+
+|join type=left iguLiteId [|inputlookup devices_networks_nwc.csv 
+|eval environment="staging"
+|append [|inputlookup prod_devices_networks_nwc.csv 
+|eval environment="prod"]
+|search environment=$environment$ buildingId=$buildingId$ 
+|rename properties_globalProperties_ipAddress as ipAddress, properties_globalProperties_ipNetmask as ipNetmask, properties_globalProperties_ipGateway as ipGateway, properties_globalProperties_macAddress as macAddress, properties_globalProperties_manufacturer as manufacturer, properties_localProperties_iguLiteId as iguLiteId properties_localProperties_iguStatus AS iguStatus properties_localProperties_iguHeight as iguHeight properties_localProperties_iguWidth as iguWidth properties_localProperties_iguBusBarHeight as iguBusBarHeight properties_localProperties_iguArea as iguArea, properties_localProperties_ghnTrunkId as ghnTrunkId properties_localProperties_ghnTrunkMacAddress as ghnTrunkMacAddress
+properties_localProperties_rEquivalent as rEquivalent properties_localProperties_ghnWireLength as ghnWireLength properties_localProperties_voffset as voffset
+properties_globalProperties_submodules_MCU_version as MCU_version
+device_status_health_status as health_status, device_status_installation_status as installation_status, device_status_network_status as network_status, device_status_registration_status as registration_status]
+
+|join type=left zoneId [|inputlookup prod_devices_zones.csv
+|eval environment="prod"
+|append [|inputlookup devices_zones.csv
+|eval environment="staging"]
+|search environment=$environment$
+|dedup uniqueId
+|rename uniqueId as zoneId, name as zone_name
+|table buildingId, zoneId, zone_name]
+
+``` TRUNK INFO ```
+|join type=left trunkId [|inputlookup prod_devices_trunks.csv
+|eval environment="prod"
+|append [|inputlookup devices_trunks.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename trunkId as cphe_port
+|rename uniqueId as trunkId
+|table cphe_port, trunkId, cpheId]
+
+``` CPHE INFO ```
+|join type=left cpheId [|inputlookup prod_devices_cphe.csv
+|eval environment="prod"
+|append [|inputlookup devices_cphe.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename type as cphe_type, serial as cphe_serial, uniqueId as cpheId
+|table cpheId, cphe_serial, cphe_type, controlPanelId]
+
+``` CONTROL PANEL INFO ```
+|join type=left controlPanelId [|inputlookup prod_devices_cp.csv
+|eval environment="prod"
+|append [|inputlookup devices_cp.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rex field=logicalId "(?&lt;cp_name&gt;.+)_\d+"
+|rename uniqueId as controlPanelId
+|table cp_name, controlPanelId]
+
+|search iguLiteId=$iguLiteId$ 
+|search ghnTrunkMacAddress=$ghnTrunkMacAddress$ 
+|search zoneId=$zoneId$
+|search macAddress=$macAddress$ 
+|search floor=$floor$
+|search facade=$facade$
+
+| spath input=voffset output=t2_baseline_target_voltage path=t2_baseline_target_voltage
+| spath input=voffset output=t2_voltage_offset path=t2_voltage_offset
+| spath input=voffset output=t3_baseline_target_voltage path=t3_baseline_target_voltage
+| spath input=voffset output=t3_voltage_offset path=t3_voltage_offset
+| spath input=voffset output=t4_baseline_target_voltage path=t4_baseline_target_voltage
+| spath input=voffset output=t4_voltage_offset path=t4_voltage_offset
+
+
+|table buildingId, logicalId, floor, facade, igu_name, logicalId, macAddress, commissioned, ipAddress, iguLiteId, iguStatus, iguHeight, iguWidth, iguBusBarHeight, iguArea, zoneId, zone_name, ghnTrunkId, ghnTrunkMacAddress, cphe_serial, cphe_type, controlPanelId, cp_name, rEquivalent, ghnWireLength, voffset, r_equivalent_value, t2_baseline_target_voltage, t2_voltage_offset, t3_baseline_target_voltage, t3_voltage_offset, t4_baseline_target_voltage, t4_voltage_offset, MCU_version, health_status, installation_status, network_status, registration_status
+|dedup igu_name
+|table igu_name</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <choice value="*&quot; OR NOT igu_name=&quot;*">All</choice>
+        <default>*" OR NOT igu_name="*</default>
+      </input>
+      <input type="dropdown" token="ghnTrunkMacAddress" searchWhenChanged="true">
+        <label>Search by Trunk Mac Address</label>
+        <choice value="*&quot; OR NOT ghnTrunkMacAddress=&quot;*">All</choice>
+        <fieldForLabel>ghnTrunkMacAddress</fieldForLabel>
+        <fieldForValue>ghnTrunkMacAddress</fieldForValue>
+        <search>
+          <query>|inputlookup prod_devices_igu.csv
+|eval environment="prod"
+|append [|inputlookup devices_igu.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename serial as iguLiteId
+|rex field=logicalId "(e_igu|IGU)_(?&lt;igu_name&gt;.+)\_.+"
+|rex field=name "IGU-IGU_(?&lt;floor&gt;\d+)"
+|rex field=igu_name "\d+(?&lt;facade&gt;\D+)\d+"
+|table buildingId, dimensions, logicalId, iguLiteId, igu_name, floor, facade
+
+|rex field=rEquivalent ".+r_equivalent\":(?&lt;r_equivalent_value&gt;\d+.\d+),.+"
+
+|join type=left iguLiteId [|inputlookup devices_networks_nwc.csv 
+|eval environment="staging"
+|append [|inputlookup prod_devices_networks_nwc.csv 
+|eval environment="prod"]
+|search environment=$environment$ buildingId=$buildingId$ 
+|rename properties_globalProperties_ipAddress as ipAddress, properties_globalProperties_ipNetmask as ipNetmask, properties_globalProperties_ipGateway as ipGateway, properties_globalProperties_macAddress as macAddress, properties_globalProperties_manufacturer as manufacturer, properties_localProperties_iguLiteId as iguLiteId properties_localProperties_iguStatus AS iguStatus properties_localProperties_iguHeight as iguHeight properties_localProperties_iguWidth as iguWidth properties_localProperties_iguBusBarHeight as iguBusBarHeight properties_localProperties_iguArea as iguArea, properties_localProperties_ghnTrunkId as ghnTrunkId properties_localProperties_ghnTrunkMacAddress as ghnTrunkMacAddress
+properties_localProperties_rEquivalent as rEquivalent properties_localProperties_ghnWireLength as ghnWireLength properties_localProperties_voffset as voffset
+properties_globalProperties_submodules_MCU_version as MCU_version
+device_status_health_status as health_status, device_status_installation_status as installation_status, device_status_network_status as network_status, device_status_registration_status as registration_status]
+
+|join type=left zoneId [|inputlookup prod_devices_zones.csv
+|eval environment="prod"
+|append [|inputlookup devices_zones.csv
+|eval environment="staging"]
+|search environment=$environment$
+|dedup uniqueId
+|rename uniqueId as zoneId, name as zone_name
+|table buildingId, zoneId, zone_name]
+
+``` TRUNK INFO ```
+|join type=left trunkId [|inputlookup prod_devices_trunks.csv
+|eval environment="prod"
+|append [|inputlookup devices_trunks.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename trunkId as cphe_port
+|rename uniqueId as trunkId
+|table cphe_port, trunkId, cpheId]
+
+``` CPHE INFO ```
+|join type=left cpheId [|inputlookup prod_devices_cphe.csv
+|eval environment="prod"
+|append [|inputlookup devices_cphe.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename type as cphe_type, serial as cphe_serial, uniqueId as cpheId
+|table cpheId, cphe_serial, cphe_type, controlPanelId]
+
+``` CONTROL PANEL INFO ```
+|join type=left controlPanelId [|inputlookup prod_devices_cp.csv
+|eval environment="prod"
+|append [|inputlookup devices_cp.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rex field=logicalId "(?&lt;cp_name&gt;.+)_\d+"
+|rename uniqueId as controlPanelId
+|table cp_name, controlPanelId]
+
+|search iguLiteId=$iguLiteId$ 
+|search zoneId=$zoneId$
+|search macAddress=$macAddress$ 
+|search igu_name=$igu_name$
+|search floor=$floor$
+|search facade=$facade$
+
+| spath input=voffset output=t2_baseline_target_voltage path=t2_baseline_target_voltage
+| spath input=voffset output=t2_voltage_offset path=t2_voltage_offset
+| spath input=voffset output=t3_baseline_target_voltage path=t3_baseline_target_voltage
+| spath input=voffset output=t3_voltage_offset path=t3_voltage_offset
+| spath input=voffset output=t4_baseline_target_voltage path=t4_baseline_target_voltage
+| spath input=voffset output=t4_voltage_offset path=t4_voltage_offset
+
+
+|table buildingId, logicalId, floor, facade, igu_name, logicalId, macAddress, commissioned, ipAddress, iguLiteId, iguStatus, iguHeight, iguWidth, iguBusBarHeight, iguArea, zoneId, zone_name, ghnTrunkId, ghnTrunkMacAddress, cphe_serial, cphe_type, controlPanelId, cp_name, rEquivalent, ghnWireLength, voffset, r_equivalent_value, t2_baseline_target_voltage, t2_voltage_offset, t3_baseline_target_voltage, t3_voltage_offset, t4_baseline_target_voltage, t4_voltage_offset, MCU_version, health_status, installation_status, network_status, registration_status
+|dedup ghnTrunkMacAddress
+|table ghnTrunkMacAddress</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <prefix>"</prefix>
+        <suffix>"</suffix>
+        <default>*" OR NOT ghnTrunkMacAddress="*</default>
+      </input>
+      <input type="dropdown" token="macAddress" searchWhenChanged="true">
+        <label>Search by Mac Address</label>
+        <fieldForLabel>macAddress</fieldForLabel>
+        <fieldForValue>macAddress</fieldForValue>
+        <search>
+          <query>|inputlookup prod_devices_igu.csv
+|eval environment="prod"
+|append [|inputlookup devices_igu.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename serial as iguLiteId
+|rex field=logicalId "(e_igu|IGU)_(?&lt;igu_name&gt;.+)\_.+"
+|rex field=name "IGU-IGU_(?&lt;floor&gt;\d+)"
+|rex field=igu_name "\d+(?&lt;facade&gt;\D+)\d+"
+|table buildingId, dimensions, logicalId, iguLiteId, igu_name, floor, facade
+
+|rex field=rEquivalent ".+r_equivalent\":(?&lt;r_equivalent_value&gt;\d+.\d+),.+"
+
+|join type=left iguLiteId [|inputlookup devices_networks_nwc.csv 
+|eval environment="staging"
+|append [|inputlookup prod_devices_networks_nwc.csv 
+|eval environment="prod"]
+|search environment=$environment$ buildingId=$buildingId$ 
+|rename properties_globalProperties_ipAddress as ipAddress, properties_globalProperties_ipNetmask as ipNetmask, properties_globalProperties_ipGateway as ipGateway, properties_globalProperties_macAddress as macAddress, properties_globalProperties_manufacturer as manufacturer, properties_localProperties_iguLiteId as iguLiteId properties_localProperties_iguStatus AS iguStatus properties_localProperties_iguHeight as iguHeight properties_localProperties_iguWidth as iguWidth properties_localProperties_iguBusBarHeight as iguBusBarHeight properties_localProperties_iguArea as iguArea, properties_localProperties_ghnTrunkId as ghnTrunkId properties_localProperties_ghnTrunkMacAddress as ghnTrunkMacAddress
+properties_localProperties_rEquivalent as rEquivalent properties_localProperties_ghnWireLength as ghnWireLength properties_localProperties_voffset as voffset
+properties_globalProperties_submodules_MCU_version as MCU_version
+device_status_health_status as health_status, device_status_installation_status as installation_status, device_status_network_status as network_status, device_status_registration_status as registration_status]
+
+|join type=left zoneId [|inputlookup prod_devices_zones.csv
+|eval environment="prod"
+|append [|inputlookup devices_zones.csv
+|eval environment="staging"]
+|search environment=$environment$
+|dedup uniqueId
+|rename uniqueId as zoneId, name as zone_name
+|table buildingId, zoneId, zone_name]
+
+``` TRUNK INFO ```
+|join type=left trunkId [|inputlookup prod_devices_trunks.csv
+|eval environment="prod"
+|append [|inputlookup devices_trunks.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename trunkId as cphe_port
+|rename uniqueId as trunkId
+|table cphe_port, trunkId, cpheId]
+
+``` CPHE INFO ```
+|join type=left cpheId [|inputlookup prod_devices_cphe.csv
+|eval environment="prod"
+|append [|inputlookup devices_cphe.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename type as cphe_type, serial as cphe_serial, uniqueId as cpheId
+|table cpheId, cphe_serial, cphe_type, controlPanelId]
+
+``` CONTROL PANEL INFO ```
+|join type=left controlPanelId [|inputlookup prod_devices_cp.csv
+|eval environment="prod"
+|append [|inputlookup devices_cp.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rex field=logicalId "(?&lt;cp_name&gt;.+)_\d+"
+|rename uniqueId as controlPanelId
+|table cp_name, controlPanelId]
+
+|search iguLiteId=$iguLiteId$ 
+|search ghnTrunkMacAddress=$ghnTrunkMacAddress$ 
+|search zoneId=$zoneId$
+|search igu_name=$igu_name$
+|search floor=$floor$
+|search facade=$facade$
+
+| spath input=voffset output=t2_baseline_target_voltage path=t2_baseline_target_voltage
+| spath input=voffset output=t2_voltage_offset path=t2_voltage_offset
+| spath input=voffset output=t3_baseline_target_voltage path=t3_baseline_target_voltage
+| spath input=voffset output=t3_voltage_offset path=t3_voltage_offset
+| spath input=voffset output=t4_baseline_target_voltage path=t4_baseline_target_voltage
+| spath input=voffset output=t4_voltage_offset path=t4_voltage_offset
+
+
+|table buildingId, logicalId, floor, facade, igu_name, logicalId, macAddress, commissioned, ipAddress, iguLiteId, iguStatus, iguHeight, iguWidth, iguBusBarHeight, iguArea, zoneId, zone_name, ghnTrunkId, ghnTrunkMacAddress, cphe_serial, cphe_type, controlPanelId, cp_name, rEquivalent, ghnWireLength, voffset, r_equivalent_value, t2_baseline_target_voltage, t2_voltage_offset, t3_baseline_target_voltage, t3_voltage_offset, t4_baseline_target_voltage, t4_voltage_offset, MCU_version, health_status, installation_status, network_status, registration_status
+|dedup macAddress
+|table macAddress</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <choice value="*&quot; OR NOT macAddress=&quot;*">All</choice>
+        <prefix>"</prefix>
+        <suffix>"</suffix>
+        <default>*" OR NOT macAddress="*</default>
+      </input>
+      <input type="dropdown" token="zoneId" searchWhenChanged="true">
+        <label>Search by Zone</label>
+        <fieldForLabel>zone_name</fieldForLabel>
+        <fieldForValue>zoneId</fieldForValue>
+        <search>
+          <query>|inputlookup prod_devices_igu.csv
+|eval environment="prod"
+|append [|inputlookup devices_igu.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename serial as iguLiteId
+|rex field=logicalId "(e_igu|IGU)_(?&lt;igu_name&gt;.+)\_.+"
+|rex field=name "IGU-IGU_(?&lt;floor&gt;\d+)"
+|rex field=igu_name "\d+(?&lt;facade&gt;\D+)\d+"
+|table buildingId, dimensions, logicalId, iguLiteId, igu_name, floor, facade
+
+|rex field=rEquivalent ".+r_equivalent\":(?&lt;r_equivalent_value&gt;\d+.\d+),.+"
+
+|join type=left iguLiteId [|inputlookup devices_networks_nwc.csv 
+|eval environment="staging"
+|append [|inputlookup prod_devices_networks_nwc.csv 
+|eval environment="prod"]
+|search environment=$environment$ buildingId=$buildingId$ 
+|rename properties_globalProperties_ipAddress as ipAddress, properties_globalProperties_ipNetmask as ipNetmask, properties_globalProperties_ipGateway as ipGateway, properties_globalProperties_macAddress as macAddress, properties_globalProperties_manufacturer as manufacturer, properties_localProperties_iguLiteId as iguLiteId properties_localProperties_iguStatus AS iguStatus properties_localProperties_iguHeight as iguHeight properties_localProperties_iguWidth as iguWidth properties_localProperties_iguBusBarHeight as iguBusBarHeight properties_localProperties_iguArea as iguArea, properties_localProperties_ghnTrunkId as ghnTrunkId properties_localProperties_ghnTrunkMacAddress as ghnTrunkMacAddress
+properties_localProperties_rEquivalent as rEquivalent properties_localProperties_ghnWireLength as ghnWireLength properties_localProperties_voffset as voffset
+properties_globalProperties_submodules_MCU_version as MCU_version
+device_status_health_status as health_status, device_status_installation_status as installation_status, device_status_network_status as network_status, device_status_registration_status as registration_status]
+
+|join type=left zoneId [|inputlookup prod_devices_zones.csv
+|eval environment="prod"
+|append [|inputlookup devices_zones.csv
+|eval environment="staging"]
+|search environment=$environment$
+|dedup uniqueId
+|rename uniqueId as zoneId, name as zone_name
+|table buildingId, zoneId, zone_name]
+
+``` TRUNK INFO ```
+|join type=left trunkId [|inputlookup prod_devices_trunks.csv
+|eval environment="prod"
+|append [|inputlookup devices_trunks.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename trunkId as cphe_port
+|rename uniqueId as trunkId
+|table cphe_port, trunkId, cpheId]
+
+``` CPHE INFO ```
+|join type=left cpheId [|inputlookup prod_devices_cphe.csv
+|eval environment="prod"
+|append [|inputlookup devices_cphe.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename type as cphe_type, serial as cphe_serial, uniqueId as cpheId
+|table cpheId, cphe_serial, cphe_type, controlPanelId]
+
+``` CONTROL PANEL INFO ```
+|join type=left controlPanelId [|inputlookup prod_devices_cp.csv
+|eval environment="prod"
+|append [|inputlookup devices_cp.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rex field=logicalId "(?&lt;cp_name&gt;.+)_\d+"
+|rename uniqueId as controlPanelId
+|table cp_name, controlPanelId]
+
+|search iguLiteId=$iguLiteId$ 
+|search ghnTrunkMacAddress=$ghnTrunkMacAddress$ 
+|search macAddress=$macAddress$ 
+|search igu_name=$igu_name$
+|search floor=$floor$
+|search facade=$facade$
+
+| spath input=voffset output=t2_baseline_target_voltage path=t2_baseline_target_voltage
+| spath input=voffset output=t2_voltage_offset path=t2_voltage_offset
+| spath input=voffset output=t3_baseline_target_voltage path=t3_baseline_target_voltage
+| spath input=voffset output=t3_voltage_offset path=t3_voltage_offset
+| spath input=voffset output=t4_baseline_target_voltage path=t4_baseline_target_voltage
+| spath input=voffset output=t4_voltage_offset path=t4_voltage_offset
+
+
+|table buildingId, logicalId, floor, facade, igu_name, logicalId, macAddress, commissioned, ipAddress, iguLiteId, iguStatus, iguHeight, iguWidth, iguBusBarHeight, iguArea, zoneId, zone_name, ghnTrunkId, ghnTrunkMacAddress, cphe_serial, cphe_type, controlPanelId, cp_name, rEquivalent, ghnWireLength, voffset, r_equivalent_value, t2_baseline_target_voltage, t2_voltage_offset, t3_baseline_target_voltage, t3_voltage_offset, t4_baseline_target_voltage, t4_voltage_offset, MCU_version, health_status, installation_status, network_status, registration_status
+|dedup zoneId
+|table zoneId, zone_name</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <choice value="*&quot; OR NOT zoneId=&quot;*">All</choice>
+        <default>*" OR NOT zoneId="*</default>
+        <prefix>"</prefix>
+        <suffix>"</suffix>
+      </input>
+      <input type="dropdown" token="iguLiteId" searchWhenChanged="true">
+        <label>Search by IGU Lite ID</label>
+        <fieldForLabel>iguLiteId</fieldForLabel>
+        <fieldForValue>iguLiteId</fieldForValue>
+        <search>
+          <query>|inputlookup prod_devices_igu.csv
+|eval environment="prod"
+|append [|inputlookup devices_igu.csv 
+|eval environment="staging"]
+|search environment=$environment$ buildingId=$buildingId$
+|rename serial as iguLiteId
+|rex field=logicalId "(e_igu|IGU)_(?&lt;igu_name&gt;.+)\_.+"
+|rex field=name "IGU-IGU_(?&lt;floor&gt;\d+)"
+|rex field=igu_name "\d+(?&lt;facade&gt;\D+)\d+"
+|table buildingId, dimensions, logicalId, iguLiteId, igu_name, floor, facade
+
+|rex field=rEquivalent ".+r_equivalent\":(?&lt;r_equivalent_value&gt;\d+.\d+),.+"
+
+|join type=left iguLiteId [|inputlookup devices_networks_nwc.csv 
+|eval environment="staging"
+|append [|inputlookup prod_devices_networks_nwc.csv 
+|eval environment="prod"]
+|search environment=$environment$ buildingId=$buildingId$ 
+|rename properties_globalProperties_ipAddress as ipAddress, properties_globalProperties_ipNetmask as ipNetmask, properties_globalProperties_ipGateway as ipGateway, properties_globalProperties_macAddress as macAddress, properties_globalProperties_manufacturer as manufacturer, properties_localProperties_iguLiteId as iguLiteId properties_localProperties_iguStatus AS iguStatus properties_localProperties_iguHeight as iguHeight properties_localProperties_iguWidth as iguWidth properties_localProperties_iguBusBarHeight as iguBusBarHeight properties_localProperties_iguArea as iguArea, properties_localProperties_ghnTrunkId as ghnTrunkId properties_localProperties_ghnTrunkMacAddress as ghnTrunkMacAddress
+properties_localProperties_rEquivalent as rEquivalent properties_localProperties_ghnWireLength as ghnWireLength properties_localProperties_voffset as voffset
+properties_globalProperties_submodules_MCU_version as MCU_version
+device_status_health_status as health_status, device_status_installation_status as installation_status, device_status_network_status as network_status, device_status_registration_status as registration_status]
+
+|join type=left zoneId [|inputlookup prod_devices_zones.csv
+|eval environment="prod"
+|append [|inputlookup devices_zones.csv
+|eval environment="staging"]
+|search environment=$environment$
+|dedup uniqueId
+|rename uniqueId as zoneId, name as zone_name
+|table buildingId, zoneId, zone_name]
+
+``` TRUNK INFO ```
+|join type=left trunkId [|inputlookup prod_devices_trunks.csv
+|eval environment="prod"
+|append [|inputlookup devices_trunks.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename trunkId as cphe_port
+|rename uniqueId as trunkId
+|table cphe_port, trunkId, cpheId]
+
+``` CPHE INFO ```
+|join type=left cpheId [|inputlookup prod_devices_cphe.csv
+|eval environment="prod"
+|append [|inputlookup devices_cphe.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rename type as cphe_type, serial as cphe_serial, uniqueId as cpheId
+|table cpheId, cphe_serial, cphe_type, controlPanelId]
+
+``` CONTROL PANEL INFO ```
+|join type=left controlPanelId [|inputlookup prod_devices_cp.csv
+|eval environment="prod"
+|append [|inputlookup devices_cp.csv
+|eval environment="staging"]
+|search environment=$environment$
+|rex field=logicalId "(?&lt;cp_name&gt;.+)_\d+"
+|rename uniqueId as controlPanelId
+|table cp_name, controlPanelId]
+
+|search ghnTrunkMacAddress=$ghnTrunkMacAddress$ 
+|search zoneId=$zoneId$
+|search macAddress=$macAddress$ 
+|search igu_name=$igu_name$
+|search floor=$floor$
+|search facade=$facade$
+
+| spath input=voffset output=t2_baseline_target_voltage path=t2_baseline_target_voltage
+| spath input=voffset output=t2_voltage_offset path=t2_voltage_offset
+| spath input=voffset output=t3_baseline_target_voltage path=t3_baseline_target_voltage
+| spath input=voffset output=t3_voltage_offset path=t3_voltage_offset
+| spath input=voffset output=t4_baseline_target_voltage path=t4_baseline_target_voltage
+| spath input=voffset output=t4_voltage_offset path=t4_voltage_offset
+
+
+|table buildingId, logicalId, floor, facade, igu_name, logicalId, macAddress, commissioned, ipAddress, iguLiteId, iguStatus, iguHeight, iguWidth, iguBusBarHeight, iguArea, zoneId, zone_name, ghnTrunkId, ghnTrunkMacAddress, cphe_serial, cphe_type, controlPanelId, cp_name, rEquivalent, ghnWireLength, voffset, r_equivalent_value, t2_baseline_target_voltage, t2_voltage_offset, t3_baseline_target_voltage, t3_voltage_offset, t4_baseline_target_voltage, t4_voltage_offset, MCU_version, health_status, installation_status, network_status, registration_status
+|dedup iguLiteId
+|table iguLiteId</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <choice value="*&quot; OR NOT iguLiteId=&quot;*">All</choice>
+        <default>*" OR NOT iguLiteId="*</default>
+        <prefix>"</prefix>
+        <suffix>"</suffix>
+      </input>
+      <table>
+        <title>IGU List</title>
+        <search>
+          <query>|inputlookup prod_devices_igu.csv
+|eval environment="prod"
+|append [|inputlookup devices_igu.csv 
+|eval environment="staging"]
+|dedup uniqueId
+|search environment=$environment$ buildingId=$buildingId$
+|rename serial as iguLiteId, logicalId as logicalId_igu, name as iguName
+|rex field=logicalId_igu "(e_igu|igu|IGU)_(?&lt;igu_name&gt;\S{1,8})_\d{6,9}"
+|rex field=igu_name "\d+(?&lt;facade&gt;\D+)\d+"
+|rex field=igu_name (?&lt;floor&gt;\d+)\D+\d+
+|table buildingId, dimensions, logicalId_igu, iguLiteId, igu_name, floor, facade,zoneId, iguName, networkId
+
+|rex field=rEquivalent ".+r_equivalent\":(?&lt;r_equivalent_value&gt;\d+.\d+),.+"
+
+|join type=left networkId [|inputlookup prod_devices_networks_nwc.csv 
+|eval environment="prod"
+|append [|inputlookup devices_networks_nwc.csv 
+|eval environment="staging"]
+|dedup uniqueId
+|search environment=$environment$ buildingId=$buildingId$ 
+|rename properties_globalProperties_ipAddress as ipAddress, properties_globalProperties_ipNetmask as ipNetmask, properties_globalProperties_ipGateway as ipGateway, properties_globalProperties_macAddress as macAddress, properties_globalProperties_manufacturer as manufacturer, properties_localProperties_iguLiteId as iguLiteId properties_localProperties_iguStatus AS iguStatus properties_localProperties_iguHeight as iguHeight properties_localProperties_iguWidth as iguWidth properties_localProperties_iguBusBarHeight as iguBusBarHeight properties_localProperties_iguArea as iguArea, properties_localProperties_ghnTrunkId as ghnTrunkId properties_localProperties_ghnTrunkMacAddress as ghnTrunkMacAddress
+properties_localProperties_rEquivalent as rEquivalent properties_localProperties_ghnWireLength as ghnWireLength properties_localProperties_voffset as voffset
+properties_globalProperties_submodules_MCU_version as MCU_version
+device_status_health_status as health_status, device_status_installation_status as installation_status, device_status_network_status as network_status, device_status_registration_status as registration_status, device_status_updatedAt as LastUpdated
+|rename uniqueId as networkId]
+
+|join type=left zoneId [|inputlookup prod_devices_zones.csv
+|eval environment="prod"
+|append [|inputlookup devices_zones.csv
+|eval environment="staging"]
+|dedup uniqueId
+|search environment=$environment$
+|dedup uniqueId
+|rename uniqueId as zoneId, name as zone_name, status as zone_status
+|table zoneId, zone_name, zone_status]
+
+``` TRUNK INFO ```
+|join type=left trunkId [|inputlookup prod_devices_trunks.csv
+|eval environment="prod"
+|append [|inputlookup devices_trunks.csv
+|eval environment="staging"]
+|dedup uniqueId
+|search environment=$environment$
+|rename trunkId as cphe_port
+|rename uniqueId as trunkId
+|table cphe_port, trunkId, cpheId]
+
+``` CPHE INFO ```
+|join type=left cpheId [|inputlookup prod_devices_cphe.csv
+|eval environment="prod"
+|append [|inputlookup devices_cphe.csv
+|eval environment="staging"]
+|dedup uniqueId
+|search environment=$environment$
+|rename type as cphe_type, serial as cphe_serial, uniqueId as cpheId
+|table cpheId, cphe_serial, cphe_type, controlPanelId]
+
+``` CONTROL PANEL INFO ```
+|join type=left controlPanelId [|inputlookup prod_devices_cp.csv
+|eval environment="prod"
+|append [|inputlookup devices_cp.csv
+|eval environment="staging"]
+|dedup uniqueId
+|search environment=$environment$
+|rex field=logicalId "(?&lt;cp_name&gt;.+)_\d+"
+|rename uniqueId as controlPanelId
+|table cp_name, controlPanelId]
+
+|search iguLiteId=$iguLiteId$ 
+|search ghnTrunkMacAddress=$ghnTrunkMacAddress$ 
+|search zoneId=$zoneId$
+|search macAddress=$macAddress$ 
+|search igu_name=$igu_name$
+|search floor=$floor$
+|search facade=$facade$
+
+| spath input=voffset output=t2_baseline_target_voltage path=t2_baseline_target_voltage
+| spath input=voffset output=t2_voltage_offset path=t2_voltage_offset
+| spath input=voffset output=t3_baseline_target_voltage path=t3_baseline_target_voltage
+| spath input=voffset output=t3_voltage_offset path=t3_voltage_offset
+| spath input=voffset output=t4_baseline_target_voltage path=t4_baseline_target_voltage
+| spath input=voffset output=t4_voltage_offset path=t4_voltage_offset
+
+
+|join type=left buildingId macAddress [search index=sensor_nwc earliest=-60m
+|search buildingId=$buildingId$
+|dedup serial
+|where serial!="serial"
+|rename _time as time
+|table buildingId, serial, command, state, time
+|eval state=round(state,0)
+|eval command=round(command,0)
+|join type=left state [|inputlookup WC_States.csv
+|rename State as state
+|table state, State_Definition]
+|rename serial as macAddress
+|eval timestamp=strftime(time,"%Y-%m-%d %H:%M:%S")
+|table buildingId, macAddress, command, state, State_Definition, timestamp]
+
+|table buildingId, logicalId_igu, floor, facade, iguName, igu_name, logicalId, macAddress, commissioned, ipAddress, iguLiteId, iguStatus, iguHeight, iguWidth, iguBusBarHeight, iguArea, zoneId, zone_name, ghnTrunkId, ghnTrunkMacAddress, cphe_serial, cphe_type, controlPanelId, cp_name, rEquivalent, ghnWireLength, voffset, r_equivalent_value, t2_baseline_target_voltage, t2_voltage_offset, t3_baseline_target_voltage, t3_voltage_offset, t4_baseline_target_voltage, t4_voltage_offset, MCU_version, health_status, installation_status, network_status, registration_status, zone_status, LastUpdated, command, state, State_Definition, timestamp
+|fields buildingId, logicalId_igu, floor, facade, zone_name,iguName, igu_name, macAddress, commissioned, network_status, iguLiteId, $fields$
+|sort floor ASC</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">50</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>
