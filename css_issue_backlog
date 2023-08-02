@@ -1,0 +1,524 @@
+<form version="1.1" theme="light">
+  <label>CS: Issue Backlog</label>
+  <description>This shows a punch list of open issues in Salesforce assigned to each user. This is a single location to identify all the open issues for a user and or site. This will not show process cases or product issue cases without issues. Punch list updates every 10 minutes.</description>
+  <search id="issues">
+    <query>|inputlookup sfdc_issue_history.csv
+|where Issue_Status__c!="Resolved"
+
+|search OwnerName IN ($OwnerName$) Opportunity_ID__c=$Opportunity_ID__c$ Failure_Component__c IN ($Failure_Component__c$) Install_Status__c IN ($Install_Status__c$) Region IN ($Region$) Priority=$Priority$ Support_Region__c IN ($Support_Region__c$) IssueType=$IssueType$
+
+|table Opportunity_ID__c, Opportunity_Name, CaseNumber, Subject, Type, Name, Description__c, Failure_Component__c, CreatedDate, IssueCreatedDate, Issue_Status__c, Dev__c, CAN_ID__c, Lite_ID_Mock_ID__c, OwnerName, Region, Priority, IssueType, KYC_Site_Tier__c
+``` ENDS BASE SEARCH ```
+  </query>
+  </search>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="multiselect" token="Region" searchWhenChanged="true">
+      <label>Major Region</label>
+      <choice value="*">All</choice>
+      <fieldForLabel>Region</fieldForLabel>
+      <fieldForValue>Region</fieldForValue>
+      <search>
+        <query>|inputlookup sfdc_issue_history.csv
+|dedup Region
+|table Region</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <default>*</default>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+      <delimiter>,</delimiter>
+    </input>
+    <input type="multiselect" token="Support_Region__c" searchWhenChanged="true">
+      <label>Support Region</label>
+      <choice value="*">All</choice>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+      <delimiter>,</delimiter>
+      <fieldForLabel>Support_Region__c</fieldForLabel>
+      <fieldForValue>Support_Region__c</fieldForValue>
+      <search>
+        <query>|inputlookup sfdc_issue_history.csv
+|dedup Support_Region__c
+|table Support_Region__c</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="multiselect" token="OwnerName" searchWhenChanged="true">
+      <label>Issue Owner</label>
+      <fieldForLabel>OwnerName</fieldForLabel>
+      <fieldForValue>OwnerName</fieldForValue>
+      <search>
+        <query>|inputlookup sfdc_issue_history.csv
+|where quarter_resolved=""
+|dedup OwnerName
+|table OwnerName
+|sort OwnerName ASC</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+      <delimiter>,</delimiter>
+    </input>
+    <input type="dropdown" token="Priority" searchWhenChanged="true">
+      <label>Priority</label>
+      <fieldForLabel>Priority</fieldForLabel>
+      <fieldForValue>Priority</fieldForValue>
+      <search>
+        <query>|inputlookup sfdc_issue_history.csv
+|dedup Priority
+|table Priority
+|sort Priority ASC</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <prefix>"</prefix>
+      <suffix>"</suffix>
+      <choice value="*">All</choice>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="Opportunity_ID__c" searchWhenChanged="true">
+      <label>Customer</label>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>Opportunity_ID__c</fieldForValue>
+      <search>
+        <query>|inputlookup sfdc_issue_history.csv
+|dedup Opportunity_ID__c
+|eval label="(".Opportunity_ID__c.") ".Opportunity_Name
+|table label, Opportunity_ID__c, Opportunity_Name
+|sort Opportunity_Name ASC</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <choice value="*">All</choice>
+      <default>*</default>
+      <prefix>"</prefix>
+      <suffix>"</suffix>
+    </input>
+    <input type="dropdown" token="IssueType" searchWhenChanged="true">
+      <label>Issue Type</label>
+      <choice value="*">All</choice>
+      <choice value="IGU">IGU</choice>
+      <choice value="Non-IGU">Non-IGU</choice>
+      <search>
+        <query>|makeresults
+|eval var=1</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <default>*</default>
+      <fieldForLabel>Name</fieldForLabel>
+      <fieldForValue>Value</fieldForValue>
+      <prefix>"</prefix>
+      <suffix>"</suffix>
+    </input>
+    <input type="multiselect" token="Failure_Component__c" searchWhenChanged="true">
+      <label>Failure Component</label>
+      <choice value="*">All</choice>
+      <fieldForLabel>Failure_Component__c</fieldForLabel>
+      <fieldForValue>Failure_Component__c</fieldForValue>
+      <search>
+        <query>|inputlookup sfdc_issue_history.csv
+|where Issue_Status__c!="Resolved"
+|dedup Failure_Component__c
+|table Failure_Component__c
+|sort Failure_Component__c ASC</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <default>*</default>
+      <delimiter>,</delimiter>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+    <input type="multiselect" token="Install_Status__c" searchWhenChanged="true">
+      <label>Install Status</label>
+      <choice value="*">All</choice>
+      <fieldForLabel>Install_Status__c</fieldForLabel>
+      <fieldForValue>Install_Status__c</fieldForValue>
+      <search>
+        <query>|inputlookup sfdc_case_issue_list.csv
+|dedup Install_Status__c
+|table Install_Status__c</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <default>Service,Active</default>
+      <delimiter>,</delimiter>
+      <valuePrefix>"</valuePrefix>
+      <valueSuffix>"</valueSuffix>
+    </input>
+  </fieldset>
+  <row>
+    <panel id="header_none">
+      <html>
+                <style>
+                    #header_none .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Issue Summary Statistics</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>Open Issue Count</title>
+        <search base="issues">
+          <query>
+|stats count</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Issues</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Sites with Issues</title>
+        <search base="issues">
+          <query>
+|stats dc(Opportunity_Name)</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Sites</option>
+      </single>
+    </panel>
+    <panel>
+      <single>
+        <title>Average Issue Age</title>
+        <search base="issues">
+          <query>
+|eval IssueCreatedDateEpoch = strptime(IssueCreatedDate,"%Y-%m-%dT%H:%M:%S.%3N%z")
+|eval Age_Days=(now()-IssueCreatedDateEpoch)/(24*60*60)
+|table CaseNumber, IssueCreatedDate, IssueCreatedDateEpoch, Age_Days
+|stats avg(Age_Days) as Avg_Days</query>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="rangeColors">["0x53a051","0x0877a6","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="underLabel">Days Old</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Issues by Priority</title>
+        <search base="issues">
+          <query>
+|stats count by Priority
+|sort count ASC</query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.drilldown">all</option>
+        <option name="height">265</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <set token="Priority">$click.value$</set>
+        </drilldown>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Issues by Failure Component</title>
+        <search base="issues">
+          <query>
+|stats count by Failure_Component__c
+|sort count ASC</query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.drilldown">none</option>
+        <option name="height">266</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <chart>
+        <title>Issues by Site</title>
+        <search base="issues">
+          <query>|stats count by Opportunity_Name
+|sort count ASC</query>
+        </search>
+        <option name="charting.chart">pie</option>
+        <option name="charting.drilldown">all</option>
+        <option name="height">246</option>
+        <option name="refresh.display">progressbar</option>
+        <drilldown>
+          <set token="site_id">$click.value$</set>
+        </drilldown>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_offline">
+      <html>
+                <style>
+                    #header_offline .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Offline Sites</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Sites Offline by Region</title>
+        <search>
+          <query>index=lasthb
+| eval downsince=strftime(last_hb_time, "%m/%d/%y %H:%M:%S")
+| eval downtime=(_time-last_hb_time)/3600
+| eval downdays = tostring(downtime*3600, "duration")
+| eval downtimeMin=(_time-last_hb_time)/60
+| eval duration2=replace(downdays,"((\d+)\+)*(\d+):(\d+):(\d*\.\d*)","\2 Days \3 Hrs \4 Mins")
+| sort - _time
+| eval currentStatus=if (_time &lt; now()-900, "Connection Recovered", "Currently Down")
+| eval downtimeMin=round(downtimeMin)
+| dedup customer, downsince
+| sort  customer
+| table client_id, customer, downsince, downtimeMin, duration2, currentStatus, tracking_freq
+
+| sort downtime ASC
+| rename client_id as site_id
+
+|lookup customer_site_info.csv site_id OUTPUTNEW Opportunity_ID__c
+|lookup master_opportunity_list.csv Opportunity_ID__c OUTPUTNEW Project_State__c
+|rename Project_State__c as StateAbbv
+|lookup state_lookup.csv StateAbbv OUTPUTNEW State Region
+|eval Region=if(isnull(Region),"International",Region)
+|search Region IN ($Region$)
+
+|where currentStatus="Currently Down"
+| table site_id, customer, downsince, downtimeMin, duration2, currentStatus, tracking_freq
+|sort downtimeMin ASC</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_owners">
+      <html>
+                <style>
+                    #header_owners .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Issue Count by Owner</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Issues by Owner</title>
+        <search base="issues">
+          <query>
+
+|stats count by OwnerName
+|sort count DESC</query>
+        </search>
+        <option name="charting.axisLabelsX.majorLabelStyle.rotation">-45</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.drilldown">none</option>
+        <option name="height">352</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_sitestats">
+      <html>
+                <style>
+                    #header_sitestats .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Open Issues by Site</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <search base="issues">
+          <query>|eval IssueCreatedDateEpoch = strptime(IssueCreatedDate,"%Y-%m-%dT%H:%M:%S.%3N%z")
+|eval Age_Days=(now()-IssueCreatedDateEpoch)/(24*60*60)
+|join type=left CaseNumber [|inputlookup sfdc_case_workorder.csv | table CaseNumber WorkOrderNumber WOOwnerName] 
+|table site_id, Opportunity_ID__c, Opportunity_Name, CaseNumber, Subject, Type, Name, Description__c, Failure_Component__c, CreatedDate, Issue_Status__c, Dev__c, CAN_ID__c, Lite_ID_Mock_ID__c, OwnerName, WorkOrderNumber, WOOwnerName, Age_Days, IssueType, KYC_Site_Tier__c
+|chart count over Opportunity_ID__c by IssueType
+|rename "Non-IGU" as Non_IGU
+
+|eval total_issues = IGU + Non_IGU
+|sort total_issues DESC
+
+|join type=left Opportunity_ID__c [search `sfdc_opportunities`
+|rename State as StateAbbv 
+|lookup state_lookup.csv StateAbbv OUTPUTNEW State Region
+|eval Region=if(isnull(Region),"International",Region)
+|table Opportunity_ID__c, Opportunity_Name, Region, KYC_Site_Tier__c]
+
+|table Opportunity_ID__c, Opportunity_Name, Region, KYC_Site_Tier__c, IGU, Non_IGU, total_issues</query>
+        </search>
+        <option name="count">50</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="number" field="Age_Days">
+          <option name="precision">0</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_p1">
+      <html>
+                <style>
+                    #header_p1 .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">P1 Issues</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Open Issues at the Site</title>
+        <search base="issues">
+          <query>|search Priority="P1" 
+|eval IssueCreatedDateEpoch = strptime(IssueCreatedDate,"%Y-%m-%dT%H:%M:%S.%3N%z")
+|eval Age_Days=(now()-IssueCreatedDateEpoch)/(24*60*60)
+|join type=left CaseNumber [|inputlookup sfdc_case_workorder.csv | table CaseNumber WorkOrderNumber WOOwnerName] 
+|table site_id, Opportunity_Name, CaseNumber, Subject, Type, Name, Description__c, Failure_Component__c, IssueCreatedDate, Issue_Status__c, Dev__c, CAN_ID__c, Lite_ID_Mock_ID__c, OwnerName, WorkOrderNumber, WOOwnerName, Age_Days
+|rename OwnerName as CaseOwnerName
+|sort Opportunity_Name IssueCreatedDate DESC</query>
+        </search>
+        <option name="count">50</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="number" field="Age_Days">
+          <option name="precision">0</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_p2">
+      <html>
+                <style>
+                    #header_p2 .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">P2 Issues</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Open Issues at the Site</title>
+        <search base="issues">
+          <query>|search Priority="P2" 
+|eval IssueCreatedDateEpoch = strptime(IssueCreatedDate,"%Y-%m-%dT%H:%M:%S.%3N%z")
+|eval Age_Days=(now()-IssueCreatedDateEpoch)/(24*60*60)
+|join type=left CaseNumber [|inputlookup sfdc_case_workorder.csv | table CaseNumber WorkOrderNumber WOOwnerName] 
+|table site_id, Opportunity_Name, CaseNumber, Subject, Type, Name, Description__c, Failure_Component__c, IssueCreatedDate, Issue_Status__c, Dev__c, CAN_ID__c, Lite_ID_Mock_ID__c, OwnerName, WorkOrderNumber, WOOwnerName, Age_Days
+|rename OwnerName as CaseOwnerName
+|sort Opportunity_Name IssueCreatedDate DESC</query>
+        </search>
+        <option name="count">50</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="number" field="Age_Days">
+          <option name="precision">0</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_p3">
+      <html>
+                <style>
+                    #header_p3 .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">P3 Issues</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Open Issues at the Site</title>
+        <search base="issues">
+          <query>|search Priority="P3" 
+|eval IssueCreatedDateEpoch = strptime(IssueCreatedDate,"%Y-%m-%dT%H:%M:%S.%3N%z")
+|eval Age_Days=(now()-IssueCreatedDateEpoch)/(24*60*60)
+|join type=left CaseNumber [|inputlookup sfdc_case_workorder.csv | table CaseNumber WorkOrderNumber WOOwnerName] 
+|table site_id, Opportunity_Name, CaseNumber, Subject, Type, Name, Description__c, Failure_Component__c, IssueCreatedDate, Issue_Status__c, Dev__c, CAN_ID__c, Lite_ID_Mock_ID__c, OwnerName, WorkOrderNumber, WOOwnerName, Age_Days
+|rename OwnerName as CaseOwnerName
+|sort Opportunity_Name IssueCreatedDate DESC</query>
+        </search>
+        <option name="count">50</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="number" field="Age_Days">
+          <option name="precision">0</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_p4">
+      <html>
+                <style>
+                    #header_p4 .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">P4 Issues</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Open Issues at the Site</title>
+        <search base="issues">
+          <query>|search Priority="P4" 
+|eval IssueCreatedDateEpoch = strptime(IssueCreatedDate,"%Y-%m-%dT%H:%M:%S.%3N%z")
+|eval Age_Days=(now()-IssueCreatedDateEpoch)/(24*60*60)
+|join type=left CaseNumber [|inputlookup sfdc_case_workorder.csv | table CaseNumber WorkOrderNumber WOOwnerName] 
+|table site_id, Opportunity_Name, CaseNumber, Subject, Type, Name, Description__c, Failure_Component__c, IssueCreatedDate, Issue_Status__c, Dev__c, CAN_ID__c, Lite_ID_Mock_ID__c, OwnerName, WorkOrderNumber, WOOwnerName, Age_Days
+|rename OwnerName as CaseOwnerName
+|sort Opportunity_Name IssueCreatedDate DESC</query>
+        </search>
+        <option name="count">50</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="number" field="Age_Days">
+          <option name="precision">0</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+</form>
