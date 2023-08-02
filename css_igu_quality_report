@@ -1,0 +1,503 @@
+<form version="1.1">
+  <label>Site IGU Quality Report</label>
+  <search>
+    <query>
+      index="sfdc_prd" source="sfdc_object://Order_Entry_Release__C_sfdc_read_production_Order_Entry_Release__C" Opportunity__c=$Opportunity__c$ earliest=-20y latest=now()
+|dedup Name
+|search $omit_canceled$
+|rename Name as Order_Entry_Number, Id as Order_Entry_Release__c
+|lookup opportunity_list.csv Opportunity__c OUTPUTNEW Name
+
+``` Get name of creator ```
+|join type=left CreatedById [|inputlookup sfdc_users.csv
+|rename OwnerId as CreatedById, OwnerName as OECreatedBy
+|table CreatedById, OECreatedBy]
+
+``` Get name of PM ```
+|join type=left Project_Manager__c [|inputlookup sfdc_users.csv
+|rename OwnerId as Project_Manager__c, OwnerName as PM_Name
+|table Project_Manager__c,PM_Name]
+
+
+|table Order_Entry_Number, Order_Entry_Release__c, Opportunity__c, Name, Order_Type__c, Project_Manager__c, PM_Name, Billing_Address__c, Shipping_Address__c, Sold_to_Address__c, Status__c, CreatedById, OECreatedBy, CreatedDate
+    </query>
+    <earliest>-30d@d</earliest>
+    <latest>now</latest>
+    <done>
+      <condition>
+        <set token="order_list">$job.sid$</set>
+      </condition>
+    </done>
+  </search>
+  <search>
+    <query>
+      |inputlookup sfdc_issue_history.csv 
+|where site_id=$site_id$ AND Failure_Component__c="IGU"
+| table site_id, customer, CaseNumber,CaseOwnerName, Subject, Type, Name, Description__c, Failure_Component__c, Failure_Mode_Name, IssueCreatedDate, Issue_Status__c, Lite_ID_Mock_ID__c, WorkOrderNumber, WOOwnerName
+    </query>
+    <earliest>-30d@d</earliest>
+    <latest>now</latest>
+    <done>
+      <condition>
+        <set token="igu_issue_list">$job.sid$</set>
+      </condition>
+    </done>
+  </search>
+  <search>
+    <query>|inputlookup customer_site_info.csv
+|search site_id=$site_id$
+|table Opportunity__c
+    </query>
+    <earliest>-30d@d</earliest>
+    <latest>now</latest>
+    <done>
+      <condition>
+        <set token="Opportunity__c">$result.Opportunity__c$</set>
+      </condition>
+    </done>
+  </search>
+  <fieldset submitButton="true" autoRun="false">
+    <input type="dropdown" token="site_id" searchWhenChanged="true">
+      <label>Filter by Site</label>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>site_id</fieldForValue>
+      <search>
+        <query>|inputlookup customer_site_info.csv
+|dedup site_id
+|where Customer_Site_Name!=""
+|eval label=site_id.": ".customer
+|table label, site_id, customer, Opportunity__c</query>
+        <earliest>-30d@d</earliest>
+        <latest>now</latest>
+      </search>
+      <prefix>"</prefix>
+      <suffix>"</suffix>
+    </input>
+    <input type="checkbox" token="readme" searchWhenChanged="true">
+      <label>Show Readme</label>
+      <choice value="true">True</choice>
+    </input>
+  </fieldset>
+  <row depends="$readme$">
+    <panel id="header_readme">
+      <html>
+                <style>
+                    #header_readme .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Dashboard Readme</h1>
+            </html>
+    </panel>
+  </row>
+  <row depends="$readme$">
+    <panel>
+      <html>
+ <h3>Dashboard Overview</h3>
+<p>This dashboard is split into four panels:</p>
+<p> <b>1. Order Overview</b> </p>
+<p> This panel shows the total number of orders along with the count of orders by type and status. This panel does not include canceled orders by default, unless the filter below is modified to include canceled order </p>
+<p> <b>2. Order Details </b>
+        </p>
+<p>This panel shows a list of each order with shipping information, billing information, and order status. This panel does not include canceled orders by default, unless the filter below is modified to include canceled orders. You can add or remove orders from this list using the status filter multi-select below</p>  
+<p> <b>3. Order Line Details </b>
+        </p>
+<p>This panel shows the a list of line items for every order. The user can select an order to see a list of the line items it included, and then filter by shipment status if desired.</p> 
+<p> <b>4. Glass Details </b>
+<p>This panel shows a summary of the glass makeups and quantities ordered.</p>  
+        </p>
+      </html>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_type2">
+      <html>
+                <style>
+                    #header_type2 .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Type 2 Summary</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Basic Opportunity Information and Service Dates</title>
+        <search>
+          <query>index=sfdc_prd source="sfdc_object://Opportunity_sfdc_read_production_Prod_Opportunity" earliest=-10y latest=now()
+[|inputlookup customer_site_info.csv
+|search site_id=$site_id$
+|table Opportunity_ID__c]
+|head 1
+|table Opportunity_ID__c, Name, Market_Sub_Segment__c, CSM_Stage__c, CloseDate, Occupancy_Date__c, Install_Status__c, Service_Date__c, Relevant_NPI__c</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>High Level Failure Rates</title>
+        <search>
+          <query>|inputlookup _periscope_views_wc_config_latest.csv
+|append [|inputlookup _periscope_views_denali_wc_config_latest.csv]
+|where site_id&gt;5000 andsite_id=$site_id$
+|rename id as wc_id
+| eval vendorId = substr("000000000", 0, max(8-len(vendorId), 0)) . vendorId
+| rex field=wc_id "DEV(?P&lt;dev&gt;\d+).WC(?P&lt;wc&gt;\d+)"
+|lookup site_info.csv site_id OUTPUTNEW customer 
+|where isnotnull(customer)
+|table site_id, customer, dev, wc_id, zone_id, vendorId
+|join type=left site_id zone_id [| inputlookup _periscope_views_site_config.csv
+| rename zone_id_wc as zone_id id_win as zone_name
+| table site_id, zone_id, zone_name]
+|join type=left site_id zone_id [| inputlookup _periscope_views_denali_site_config.csv
+| rename zone_id_wc as zone_id id_win as zone_name
+| table site_id, zone_id, zone_name]
+|table site_id, customer, dev, wc_id, vendorId, zone_id, zone_name
+|stats count as window_controllers by site_id
+
+|join type=left site_id [|loadjob $igu_issue_list$
+|where Failure_Mode_Name="Obstruction in Field of View - Non-Tinting Type 2"
+|stats count as Type_2_Failures by site_id]
+
+|eval failure_rate=round((Type_2_Failures/window_controllers)*100,1)
+|table window_controllers, Type_2_Failures, failure_rate</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="number" field="failure_rate">
+          <option name="unit">%</option>
+        </format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Type 2 Issue Status Summary</title>
+        <search>
+          <query>|loadjob $igu_issue_list$
+|where Failure_Mode_Name="Obstruction in Field of View - Non-Tinting Type 2"
+|stats count by Failure_Mode_Name, Issue_Status__c</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_iguquality">
+      <html>
+                <style>
+                    #header_iguquality .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Overall IGU Quality</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>IGU Counts by Failure Mode and Issue Status</title>
+        <search>
+          <query>|loadjob $igu_issue_list$
+|stats count by Failure_Mode_Name, Issue_Status__c</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>IGU Issues Reports</title>
+        <search>
+          <query>|loadjob $igu_issue_list$
+| table site_id, customer, CaseNumber,CaseOwnerName, Subject, Type, Name, Description__c, Failure_Component__c, Failure_Mode_Name, IssueCreatedDate, Issue_Status__c, Lite_ID_Mock_ID__c, WorkOrderNumber, WOOwnerName</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_overview">
+      <html>
+                <style>
+                    #header_overview .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Order Overview</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="dropdown" token="omit_canceled">
+        <label>Omit Cancelled</label>
+        <choice value="Status__c!=&quot;Cancelled&quot;">Omit Canceled</choice>
+        <choice value="Status__c=*">Show Canceled</choice>
+        <default>Status__c!="Cancelled"</default>
+      </input>
+      <single>
+        <title>Total Orders</title>
+        <search>
+          <query>|loadjob $order_list$
+|stats count</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <table>
+        <title>Count by Order Status</title>
+        <search>
+          <query>|loadjob $order_list$
+|stats count by Status__c</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Count by Order Type</title>
+        <search>
+          <query>|loadjob $order_list$
+|stats count by Order_Type__c</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_list">
+      <html>
+                <style>
+                    #header_list .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Order List</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="multiselect" token="Status__c" searchWhenChanged="true">
+        <label>Filter by Status</label>
+        <valuePrefix>"</valuePrefix>
+        <valueSuffix>"</valueSuffix>
+        <delimiter>,</delimiter>
+        <fieldForLabel>Status__c</fieldForLabel>
+        <fieldForValue>Status__c</fieldForValue>
+        <search>
+          <query>|loadjob $order_list$
+|dedup Status__c
+|table Status__c</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <default>Invoiced,Partially Shipped,Shipped,Planned,In Production</default>
+      </input>
+      <table>
+        <title>List of Orders</title>
+        <search>
+          <query>|loadjob $order_list$
+|search Status__c IN ($Status__c$)
+|fields - Opportunity__c, Project_Manager__c, CreatedById
+|sort Order_Entry_Number DESC</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_lines">
+      <html>
+                <style>
+                    #header_lines .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Order Entry Lines</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="dropdown" token="Order_Entry_Release__c" searchWhenChanged="true">
+        <label>Select an Order</label>
+        <prefix>"</prefix>
+        <suffix>"</suffix>
+        <fieldForLabel>Label</fieldForLabel>
+        <fieldForValue>Order_Entry_Release__c</fieldForValue>
+        <search>
+          <query>|loadjob $order_list$
+|fields - Opportunity__c, Project_Manager__c, CreatedById
+|sort Order_Entry_Number ASC
+|eval Label=Order_Entry_Number." (".Status__c.")"
+|table Label, Order_Entry_Number, Order_Entry_Release__c, Status__c</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <choice value="*">All</choice>
+        <default>*</default>
+      </input>
+      <input type="dropdown" token="Line_Status" searchWhenChanged="true">
+        <label>Filter by Line Status</label>
+        <choice value="*">All</choice>
+        <choice value="Not Fully Shipped">Not Fully Shipped</choice>
+        <choice value="Fully Shipped">Fully Shipped</choice>
+        <default>*</default>
+        <prefix>"</prefix>
+        <suffix>"</suffix>
+      </input>
+      <table>
+        <search>
+          <query>index="sfdc_prd" source="sfdc_object://Order_Entry_Line__c_sfdc_read_production_Order_Entry_Line__c" earliest=-20y latest=now() Order_Entry_Release__c=$Order_Entry_Release__c$
+
+|search [|loadjob $order_list$
+|fields - Opportunity__c, Project_Manager__c, CreatedById
+|sort Order_Entry_Number ASC
+|eval Label=Order_Entry_Number." (".Status__c.")"
+|search Order_Entry_Release__c=$Order_Entry_Release__c$
+|table Order_Entry_Release__c]
+
+|dedup Id
+|rename Name as OEL_Name
+|eval Quantity_Shipped__c=if(Quantity_Shipped__c="null",0,Quantity_Shipped__c)
+|eval Line_Status=if(Quantity_Shipped__c=Quantity__c,"Fully Shipped","Not Fully Shipped")
+|search Line_Status=$Line_Status$
+|table OEL_Name, Product_Name__c, Dimension_Description__c, Quantity__c, Quantity_Shipped__c, Line_Status, LastModifiedDate</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_glass">
+      <html>
+                <style>
+                    #header_glass .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Glass Orders Summary</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>Unique IGU Sizes/Makeups</title>
+        <search>
+          <query>index="sfdc_prd" source="sfdc_object://Order_Entry_Line__c_sfdc_read_production_Order_Entry_Line__c" earliest=-20y latest=now()
+|search [|loadjob $order_list$
+|fields - Opportunity__c, Project_Manager__c, CreatedById
+|sort Order_Entry_Number ASC
+|table Order_Entry_Release__c]
+
+|dedup Id
+|rename Name as OEL_Name
+|eval Quantity_Shipped__c=if(Quantity_Shipped__c="null",0,Quantity_Shipped__c)
+|eval Line_Status=if(Quantity_Shipped__c=Quantity__c,"Fully Shipped","Not Fully Shipped")
+|search Dimension_Description__c!=": mm x mm x mm" AND OEL_Name=*
+|table OEL_Name, Order_Entry_Release__c, Product_Name__c, Dimension_Description__c, Quantity__c, Quantity_Shipped__c, Line_Status, LastModifiedDate
+
+|table OEL_Name, Product_Name__c, Dimension_Description__c, Quantity__c, Quantity_Shipped__c, Line_Status, LastModifiedDate
+
+|eval uniques=Product_Name__c.Dimension_Description__c
+|stats dc(uniques) as UniqueSizes</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+    </panel>
+    <panel>
+      <table>
+        <title>IGU Count by Makeup</title>
+        <search>
+          <query>index="sfdc_prd" source="sfdc_object://Order_Entry_Line__c_sfdc_read_production_Order_Entry_Line__c" earliest=-20y latest=now()
+|search [|loadjob $order_list$
+|fields - Opportunity__c, Project_Manager__c, CreatedById
+|sort Order_Entry_Number ASC
+|table Order_Entry_Release__c]
+
+|dedup Id
+|rename Name as OEL_Name
+|eval Quantity_Shipped__c=if(Quantity_Shipped__c="null",0,Quantity_Shipped__c)
+|eval Line_Status=if(Quantity_Shipped__c=Quantity__c,"Fully Shipped","Not Fully Shipped")
+|search Dimension_Description__c!=": mm x mm x mm" AND OEL_Name=*
+|table OEL_Name, Order_Entry_Release__c, Product_Name__c, Dimension_Description__c, Quantity__c, Quantity_Shipped__c, Line_Status, LastModifiedDate
+
+|table OEL_Name, Product_Name__c, Dimension_Description__c, Quantity__c, Quantity_Shipped__c, Line_Status, LastModifiedDate
+
+|stats sum(Quantity__c) as Quantity_Ordered sum(Quantity_Shipped__c) as Quantity_Shipped by Product_Name__c</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>IGU Count by Makeup and Size</title>
+        <search>
+          <query>index="sfdc_prd" source="sfdc_object://Order_Entry_Line__c_sfdc_read_production_Order_Entry_Line__c" earliest=-20y latest=now()
+|search [|loadjob $order_list$
+|fields - Opportunity__c, Project_Manager__c, CreatedById
+|sort Order_Entry_Number ASC
+|table Order_Entry_Release__c]
+
+|dedup Id
+|rename Name as OEL_Name
+|eval Quantity_Shipped__c=if(Quantity_Shipped__c="null",0,Quantity_Shipped__c)
+|eval Line_Status=if(Quantity_Shipped__c=Quantity__c,"Fully Shipped","Not Fully Shipped")
+|search Dimension_Description__c!=": mm x mm x mm" AND OEL_Name=*
+|table OEL_Name, Order_Entry_Release__c, Product_Name__c, Dimension_Description__c, Quantity__c, Quantity_Shipped__c, Line_Status, LastModifiedDate
+
+|table OEL_Name, Product_Name__c, Dimension_Description__c, Quantity__c, Quantity_Shipped__c, Line_Status, LastModifiedDate
+
+|stats sum(Quantity__c) as Quantity_Ordered sum(Quantity_Shipped__c) as Quantity_Shipped by Product_Name__c, Dimension_Description__c</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>
