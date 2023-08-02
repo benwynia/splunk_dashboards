@@ -1,0 +1,625 @@
+<form version="1.1" theme="dark">
+  <label>CS: Grouped Events Dashboard</label>
+  <description>DB Query Runs Every 10 minutes. Defaults to monitored sites and "Alert" severity. All filters are linked.</description>
+  <fieldset submitButton="true" autoRun="true">
+    <input type="dropdown" token="site_id" searchWhenChanged="true">
+      <label>Customer</label>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>site_id</fieldForValue>
+      <search>
+        <query>| inputlookup active_events.csv 
+| join type=left site_id
+   [ inputlookup site_info.csv
+   | table site_id, customer, tracking_freq, external_ip]
+| join type=left event_id
+   [ inputlookup _event_manager_fmc.csv
+   | rename obj_type AS obj_type_fmc, Severity as severity
+    |table event_id, severity, obj_type_fmc]
+| where (obj_type=obj_type_fmc) and (is_cleared=0) and (site_id&gt;5000)
+| join type=left site_id 
+   [|inputlookup customer_site_info.csv
+    |table site_id, Install_Status__c]
+| eval Install_Status__c=case(isnull(Install_Status__c),"Service",1=1,Install_Status__c)
+| search obj_type_fmc=$obj_type_fmc$, message=$message$, tracking_freq=$tracking_freq$, severity=$severity$, Install_Status__c=$Install_Status__c$
+| table site_id, customer, event_id message, severity, obj_type_fmc, obj_type, duration object time time_pst tracking_freq external_ip, Install_Status__c
+|eval label=site_id.": ".customer
+| dedup label, site_id, customer 
+| table label, site_id, customer 
+| sort site_id, customer ASC</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <choice value="*">*</choice>
+      <prefix>"</prefix>
+      <suffix>"</suffix>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="dropdown" token="obj_type_fmc" searchWhenChanged="true">
+      <label>Object Type</label>
+      <search>
+        <query>| inputlookup active_events.csv 
+| join type=left site_id
+   [ inputlookup site_info.csv
+   | table site_id, customer, tracking_freq, external_ip]
+| join type=left event_id
+   [ inputlookup _event_manager_fmc.csv
+   | rename obj_type AS obj_type_fmc, Severity as severity
+    |table event_id, severity, obj_type_fmc]
+| where (obj_type=obj_type_fmc) and (is_cleared=0) and (site_id&gt;5000)
+| join type=left site_id 
+   [|inputlookup customer_site_info.csv
+    |table site_id, Install_Status__c]
+| eval Install_Status__c=case(isnull(Install_Status__c),"Service",1=1,Install_Status__c)
+| search site_id=$site_id$, message=$message$, tracking_freq=$tracking_freq$, severity=$severity$, Install_Status__c=$Install_Status__c$
+| table site_id, customer, event_id message, severity, obj_type_fmc, obj_type, duration object time time_pst tracking_freq external_ip, Install_Status__c
+| dedup obj_type_fmc
+| table obj_type_fmc
+| sort obj_type_fmc ASC</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <fieldForLabel>obj_type_fmc</fieldForLabel>
+      <fieldForValue>obj_type_fmc</fieldForValue>
+      <choice value="*">*</choice>
+      <prefix>"</prefix>
+      <suffix>"</suffix>
+      <initialValue>*</initialValue>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="message" searchWhenChanged="true">
+      <label>Message</label>
+      <choice value="*">*</choice>
+      <fieldForLabel>message</fieldForLabel>
+      <fieldForValue>message</fieldForValue>
+      <search>
+        <query>| inputlookup active_events.csv 
+| join type=left site_id
+   [ inputlookup site_info.csv
+   | table site_id, customer, tracking_freq, external_ip]
+| join type=left event_id
+   [ inputlookup _event_manager_fmc.csv
+   | rename obj_type AS obj_type_fmc, Severity as severity
+    |table event_id, severity, obj_type_fmc]
+| where (obj_type=obj_type_fmc) and (is_cleared=0) and (site_id&gt;5000)
+| join type=left site_id 
+   [|inputlookup customer_site_info.csv
+    |table site_id, Install_Status__c]
+| eval Install_Status__c=case(isnull(Install_Status__c),"Service",1=1,Install_Status__c)
+| search site_id=$site_id$, obj_type_fmc=$obj_type_fmc$,  tracking_freq=$tracking_freq$, severity=$severity$, Install_Status__c=$Install_Status__c$
+| table site_id, customer, event_id message, severity, obj_type_fmc, obj_type, duration object time time_pst tracking_freq external_ip, Install_Status__c
+| dedup message
+| table message
+| sort message ASC</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <prefix>"</prefix>
+      <suffix>"</suffix>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+    <input type="dropdown" token="tracking_freq" searchWhenChanged="true">
+      <label>Monitoring Status</label>
+      <prefix>"</prefix>
+      <suffix>"</suffix>
+      <fieldForLabel>tracking_freq</fieldForLabel>
+      <fieldForValue>tracking_freq</fieldForValue>
+      <search>
+        <query>| inputlookup active_events.csv 
+| join type=left site_id
+   [ inputlookup site_info.csv
+   | table site_id, customer, tracking_freq, external_ip]
+| join type=left event_id
+   [ inputlookup _event_manager_fmc.csv
+   | rename obj_type AS obj_type_fmc, Severity as severity
+    |table event_id, severity, obj_type_fmc]
+| where (obj_type=obj_type_fmc) and (is_cleared=0) and (site_id&gt;5000)
+| join type=left site_id 
+   [|inputlookup customer_site_info.csv
+    |table site_id, Install_Status__c]
+| eval Install_Status__c=case(isnull(Install_Status__c),"Service",1=1,Install_Status__c)
+| search site_id=$site_id$, obj_type_fmc=$obj_type_fmc$, message=$message$,  severity=$severity$, Install_Status__c=$Install_Status__c$
+| table site_id, customer, event_id message, severity, obj_type_fmc, obj_type, duration object time time_pst tracking_freq external_ip, Install_Status__c
+| dedup tracking_freq
+| table tracking_freq
+| sort tracking_freq ASC</query>
+        <earliest>-7d@h</earliest>
+        <latest>now</latest>
+      </search>
+      <initialValue>monitored</initialValue>
+      <choice value="*">*</choice>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="severity" searchWhenChanged="true">
+      <label>Severity</label>
+      <choice value="*">*</choice>
+      <prefix>"</prefix>
+      <suffix>"</suffix>
+      <fieldForLabel>severity</fieldForLabel>
+      <fieldForValue>severity</fieldForValue>
+      <search>
+        <query>| inputlookup active_events.csv 
+| join type=left site_id
+   [ inputlookup site_info.csv
+   | table site_id, customer, tracking_freq, external_ip]
+| join type=left event_id
+   [ inputlookup _event_manager_fmc.csv
+   | rename obj_type AS obj_type_fmc, Severity as severity
+    |table event_id, severity, obj_type_fmc]
+| where (obj_type=obj_type_fmc) and (is_cleared=0) and (site_id&gt;5000)
+| join type=left site_id 
+   [|inputlookup customer_site_info.csv
+    |table site_id, Install_Status__c]
+| eval Install_Status__c=case(isnull(Install_Status__c),"Service",1=1,Install_Status__c)
+| search site_id=$site_id$, obj_type_fmc=$obj_type_fmc$, message=$message$, tracking_freq=$tracking_freq$, Install_Status__c=$Install_Status__c$
+| table site_id, customer, event_id message, severity, obj_type_fmc, obj_type, duration object time time_pst tracking_freq external_ip, Install_Status__c
+| dedup severity
+| table severity
+| sort severity ASC</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <default>Alert</default>
+      <initialValue>Alert</initialValue>
+    </input>
+    <input type="dropdown" token="Install_Status__c">
+      <label>Install Status</label>
+      <choice value="*">All</choice>
+      <prefix>"</prefix>
+      <suffix>"</suffix>
+      <fieldForLabel>Install_Status__c</fieldForLabel>
+      <fieldForValue>Install_Status__c</fieldForValue>
+      <search>
+        <query>| inputlookup active_events.csv 
+| join type=left site_id
+   [ inputlookup site_info.csv
+   | table site_id, customer, tracking_freq, external_ip]
+| join type=left event_id
+   [ inputlookup _event_manager_fmc.csv
+   | rename obj_type AS obj_type_fmc, Severity as severity
+    |table event_id, severity, obj_type_fmc]
+| where (obj_type=obj_type_fmc) and (is_cleared=0) and (site_id&gt;5000)
+| join type=left site_id 
+   [|inputlookup customer_site_info.csv
+    |table site_id, Install_Status__c]
+| eval Install_Status__c=case(isnull(Install_Status__c),"Service",1=1,Install_Status__c)
+| search site_id=$site_id$, obj_type_fmc=$obj_type_fmc$, message=$message$, tracking_freq=$tracking_freq$, severity=$severity$
+| table site_id, customer, event_id message, severity, obj_type_fmc, obj_type, duration object time time_pst tracking_freq external_ip, Install_Status__c
+| dedup Install_Status__c
+| table Install_Status__c
+| sort Install_Status__c ASC</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <default>*</default>
+    </input>
+    <input type="dropdown" token="issue_num" searchWhenChanged="true">
+      <label>Remove Known Issues</label>
+      <choice value="Unknown">Yes</choice>
+      <choice value="*">No</choice>
+      <default>*</default>
+      <initialValue>*</initialValue>
+    </input>
+  </fieldset>
+  <row>
+    <panel>
+      <title>Active Event Counts by Object Type</title>
+      <single>
+        <title>MC</title>
+        <search>
+          <query>| inputlookup active_events.csv
+| where obj_type="MC"
+| join type=left site_id
+   [ inputlookup site_info.csv
+   | table site_id, customer, tracking_freq, external_ip]
+| join type=left event_id
+   [ inputlookup _event_manager_fmc.csv
+   | rename obj_type AS obj_type_fmc, Severity as severity
+    |table event_id, severity, obj_type_fmc]
+| where (obj_type=obj_type_fmc) and (is_cleared=0) and (site_id&gt;5000)
+| join type=left site_id 
+   [|inputlookup customer_site_info.csv
+    |table site_id, Install_Status__c]
+```| eval Install_Status__c=case(isnull(Install_Status__c),"Service",1=1,Install_Status__c)```
+| search site_id=$site_id$, obj_type_fmc=$obj_type_fmc$, message=$message$, tracking_freq=$tracking_freq$, severity=$severity$, Install_Status__c=$Install_Status__c$
+
+|join type=left site_id object event_id [|inputlookup known_issues.csv
+|table site_id, object, event_id, issue_num]
+
+|join type=left site_id issue_num [|inputlookup sfdc_case_issue_list.csv
+|rename Name as issue_num
+|table site_id, issue_num, CaseNumber, Issue_Status__c]
+
+|eval issue_num=if(isnull(issue_num),"Unknown",issue_num)
+|search issue_num=$issue_num$
+| stats count</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+          <refresh>1m</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">all</option>
+        <option name="height">50</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="rangeValues">[0,30,100]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.size">medium</option>
+        <option name="useColors">1</option>
+        <drilldown>
+          <set token="form.obj_type">MC</set>
+        </drilldown>
+      </single>
+      <single>
+        <title>WC</title>
+        <search>
+          <query>| inputlookup active_events.csv
+| where obj_type="WC"
+| join type=left site_id
+   [ inputlookup site_info.csv
+   | table site_id, customer, tracking_freq, external_ip]
+| join type=left event_id
+   [ inputlookup _event_manager_fmc.csv
+   | rename obj_type AS obj_type_fmc, Severity as severity
+    |table event_id, severity, obj_type_fmc]
+| where (obj_type=obj_type_fmc) and (is_cleared=0) and (site_id&gt;5000)
+| join type=left site_id 
+   [|inputlookup customer_site_info.csv
+    |table site_id, Install_Status__c]
+```| eval Install_Status__c=case(isnull(Install_Status__c),"Service",1=1,Install_Status__c)```
+| search site_id=$site_id$, obj_type_fmc=$obj_type_fmc$, message=$message$, tracking_freq=$tracking_freq$, severity=$severity$, Install_Status__c=$Install_Status__c$
+
+|join type=left site_id object event_id [|inputlookup known_issues.csv
+|table site_id, object, event_id, issue_num]
+
+|join type=left max=0 site_id issue_num [|inputlookup sfdc_case_issue_list.csv
+|rename Name as issue_num
+|table site_id, issue_num, CaseNumber, Issue_Status__c]
+
+|eval issue_num=if(isnull(issue_num),"Unknown",issue_num)
+|search issue_num=$issue_num$
+
+| table site_id, customer, event_id message, severity, obj_type_fmc, obj_type, duration object time time_pst tracking_freq external_ip, ip_address, Install_Status__c, issue_num, CaseNumber, Issue_Status__c 
+| stats count</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+          <refresh>1m</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">all</option>
+        <option name="height">50</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="rangeValues">[0,30,100]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.size">medium</option>
+        <option name="useColors">1</option>
+        <drilldown>
+          <set token="form.obj_type">WC</set>
+        </drilldown>
+      </single>
+      <single>
+        <title>NC</title>
+        <search>
+          <query>| inputlookup active_events.csv
+| where obj_type="NC"
+| join type=left site_id
+   [ inputlookup site_info.csv
+   | table site_id, customer, tracking_freq, external_ip]
+| join type=left event_id
+   [ inputlookup _event_manager_fmc.csv
+   | rename obj_type AS obj_type_fmc, Severity as severity
+    |table event_id, severity, obj_type_fmc]
+| where (obj_type=obj_type_fmc) and (is_cleared=0) and (site_id&gt;5000)
+| join type=left site_id 
+   [|inputlookup customer_site_info.csv
+    |table site_id, Install_Status__c]
+```| eval Install_Status__c=case(isnull(Install_Status__c),"Service",1=1,Install_Status__c)```
+| search site_id=$site_id$, obj_type_fmc=$obj_type_fmc$, message=$message$, tracking_freq=$tracking_freq$, severity=$severity$, Install_Status__c=$Install_Status__c$
+
+|join type=left site_id object event_id [|inputlookup known_issues.csv
+|table site_id, object, event_id, issue_num]
+
+|join type=left site_id issue_num [|inputlookup sfdc_case_issue_list.csv
+|rename Name as issue_num
+|table site_id, issue_num, CaseNumber, Issue_Status__c]
+
+|eval issue_num=if(isnull(issue_num),"Unknown",issue_num)
+|search issue_num=$issue_num$
+| stats count</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+          <refresh>1m</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">all</option>
+        <option name="height">50</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="rangeValues">[0,30,100]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.size">medium</option>
+        <option name="useColors">1</option>
+        <drilldown>
+          <set token="form.obj_type">NC</set>
+        </drilldown>
+      </single>
+      <single>
+        <title>WI</title>
+        <search>
+          <query>| inputlookup active_events.csv
+| where obj_type="WI"
+| join type=left site_id
+   [ inputlookup site_info.csv
+   | table site_id, customer, tracking_freq, external_ip]
+| join type=left event_id
+   [ inputlookup _event_manager_fmc.csv
+   | rename obj_type AS obj_type_fmc, Severity as severity
+    |table event_id, severity, obj_type_fmc]
+| where (obj_type=obj_type_fmc) and (is_cleared=0) and (site_id&gt;5000)
+| join type=left site_id 
+   [|inputlookup customer_site_info.csv
+    |table site_id, Install_Status__c]
+```| eval Install_Status__c=case(isnull(Install_Status__c),"Service",1=1,Install_Status__c)```
+| search site_id=$site_id$, obj_type_fmc=$obj_type_fmc$, message=$message$, tracking_freq=$tracking_freq$, severity=$severity$, Install_Status__c=$Install_Status__c$
+
+|join type=left site_id object event_id [|inputlookup known_issues.csv
+|table site_id, object, event_id, issue_num]
+
+|join type=left site_id issue_num [|inputlookup sfdc_case_issue_list.csv
+|rename Name as issue_num
+|table site_id, issue_num, CaseNumber, Issue_Status__c]
+
+|eval issue_num=if(isnull(issue_num),"Unknown",issue_num)
+|search issue_num=$issue_num$
+| stats count</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">all</option>
+        <option name="height">50</option>
+        <option name="rangeColors">["0x53a051","0xf8be34","0xf1813f","0xdc4e41"]</option>
+        <option name="rangeValues">[0,30,100]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.size">medium</option>
+        <option name="useColors">1</option>
+        <drilldown>
+          <set token="form.obj_type">WI</set>
+        </drilldown>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Count of Current Events by Message</title>
+        <search>
+          <query>| inputlookup active_events.csv
+| join type=left site_id
+   [ inputlookup site_info.csv
+   | table site_id, customer, tracking_freq, external_ip]
+| join type=left event_id
+   [ inputlookup _event_manager_fmc.csv
+   | rename obj_type AS obj_type_fmc, Severity as severity
+    |table event_id, severity, obj_type_fmc]
+| where (obj_type=obj_type_fmc) and (is_cleared=0) and (site_id&gt;5000)
+| join type=left site_id 
+   [|inputlookup customer_site_info.csv
+    |table site_id, Install_Status__c]
+```| eval Install_Status__c=case(isnull(Install_Status__c),"Service",1=1,Install_Status__c)```
+| search site_id=$site_id$, obj_type_fmc=$obj_type_fmc$, message=$message$, tracking_freq=$tracking_freq$, severity=$severity$, Install_Status__c=$Install_Status__c$
+
+|join type=left site_id object event_id [|inputlookup known_issues.csv
+|table site_id, object, event_id, issue_num]
+
+|join type=left site_id issue_num [|inputlookup sfdc_case_issue_list.csv
+|rename Name as issue_num
+|table site_id, issue_num, CaseNumber, Issue_Status__c]
+
+|eval issue_num=if(isnull(issue_num),"Unknown",issue_num)
+|search issue_num=$issue_num$
+
+| table site_id, customer, event_id message, severity, obj_type_fmc, obj_type, duration object time time_pst tracking_freq external_ip, Install_Status__c, issue_num, CaseNumber, Issue_Status__c
+| stats count by message
+| sort 10 count desc</query>
+          <earliest>-1y@y</earliest>
+          <latest>@y</latest>
+          <refresh>1m</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+    <panel>
+      <single>
+        <title>Most Recent Event</title>
+        <search>
+          <query>|inputlookup active_events.csv
+|where site_id!=101252
+|stats max(time_pst)</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+          <refresh>1m</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </single>
+      <table>
+        <title>Lookups Used in Dashboard</title>
+        <search>
+          <query>| inputlookup active_events.csv
+| stats count as num_rows
+| eval name="active_events.csv"
+| eval check=case(num_rows&gt;0,1,1=1,0)
+| table name, check, num_rows
+|append [|inputlookup site_info.csv
+|stats count as num_rows
+|eval check=case(num_rows&gt;0,1,1=1,0)
+| eval name="site_info.csv"
+|table name, check, num_rows]
+|append [|inputlookup _event_manager_fmc.csv
+|stats count as num_rows
+| eval name="_event_manager_fmc.csv"
+|eval check=case(num_rows&gt;0,1,1=1,0)
+|table name, check, num_rows]
+|append [|inputlookup customer_site_info.csv
+|stats count as num_rows
+| eval name="customer_site_info.csv"
+|eval check=case(num_rows&gt;0,1,1=1,0)
+|table name, check, num_rows]
+|table name, num_rows</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Events Grouped by Message and Site</title>
+        <search>
+          <query>| inputlookup active_events.csv
+| join type=left site_id
+   [ inputlookup site_info.csv
+   | table site_id, customer, tracking_freq, external_ip]
+| join type=left site_id 
+    [ search index=tailscale_devices earliest=-24h latest=now() 
+    | dedup hostname 
+    | rex field=addresses "'(?&lt;ip_address&gt;\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'" 
+    | rename "clientConnectivity_latency_San Francisco_latencyMs" as SF_latency 
+    | where like(hostname,"%view%") or like(hostname,"%tintserver%") and !like(hostname,"%Fuzz%") and !like(hostname,"%Chelan%") 
+    | rex field=hostname "(?P&lt;site_id&gt;\d+)" 
+    | table hostname, site_id, ip_address, lastSeen, user, SF_latency, clientVersion, _time] 
+| join type=left event_id
+   [ inputlookup _event_manager_fmc.csv
+   | rename obj_type AS obj_type_fmc, Severity as severity
+    |table event_id, severity, obj_type_fmc]
+| where (obj_type=obj_type_fmc) and (is_cleared=0) and (site_id&gt;5000)
+| join type=left site_id 
+   [|inputlookup customer_site_info.csv
+    |table site_id, Install_Status__c]
+```| eval Install_Status__c=case(isnull(Install_Status__c),"Service",1=1,Install_Status__c)```
+| search site_id=$site_id$, obj_type_fmc=$obj_type_fmc$, message=$message$, tracking_freq=$tracking_freq$, severity=$severity$, Install_Status__c=$Install_Status__c$
+
+|join type=left site_id object event_id [|inputlookup known_issues.csv
+|table site_id, object, event_id, issue_num]
+
+|join type=left max=0 issue_num [|inputlookup sfdc_issue_history.csv 
+|where Issue_Status__c!="Resolved"
+|rename Name as issue_num
+|table issue_num, IssueCreatedDate, Issue_Status__c, CaseNumber]
+
+|eval issue_num=if(isnull(issue_num),"Unknown",issue_num)
+|eval ip_address=if(isnull(ip_address),"Unknown",ip_address)
+|search issue_num=$issue_num$
+
+| table site_id, customer, event_id message, severity, obj_type_fmc, obj_type, duration object time time_pst tracking_freq external_ip, ip_address, Install_Status__c, issue_num, CaseNumber, Issue_Status__c, IssueCreatedDate
+| rename time AS time_mc, ip_address as tailscale
+| stats max(time_mc) as "Most Recent Timestamp" values(CaseNumber) as CaseNumber values(Issue_Status__c) as Issue_Status__c values(IssueCreatedDate) as IssueCreatedDate count by site_id, customer, Install_Status__c, external_ip, tailscale, event_id, message, issue_num 
+| sort count DESC</query>
+          <earliest>0</earliest>
+          <latest></latest>
+          <sampleRatio>1</sampleRatio>
+          <refresh>1m</refresh>
+          <refreshType>delay</refreshType>
+        </search>
+        <option name="count">100</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">cell</option>
+        <option name="percentagesRow">false</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+        <drilldown>
+          <condition field="tailscale">
+            <eval token="u">replace($click.value2$, "http://", ""</eval>
+            <link target="_blank">
+              <![CDATA[ http://$u$ ]]>
+            </link>
+          </condition>
+          <condition field="external_ip">
+            <eval token="u">replace($click.value2$, "http://", ""</eval>
+            <link target="_blank">
+              <![CDATA[ http://$u$ ]]>
+            </link>
+          </condition>
+        </drilldown>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <single>
+        <title>Number of Events Resolved (Last 7 Days)</title>
+        <search>
+          <query>index="clear_events" 
+|stats count</query>
+          <earliest>-7d@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="colorMode">block</option>
+        <option name="drilldown">none</option>
+        <option name="height">50</option>
+        <option name="rangeColors">["0x53a051","0x53a051","0x53a051","0x53a051"]</option>
+        <option name="rangeValues">[0,30,100]</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="trellis.enabled">0</option>
+        <option name="trellis.size">medium</option>
+        <option name="useColors">1</option>
+      </single>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Count of Resolved Events by Message (Last 7 Days)</title>
+        <search>
+          <query>index="clear_events" 
+| stats count by message
+| sort 10 count desc</query>
+          <earliest>-7d@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Cleared Events by site and Message (Last 7 Days)</title>
+        <search>
+          <query>| inputlookup clear_events.csv | join type=left site_id
+   [ inputlookup site_info.csv 
+   | table site_id, customer, tracking_freq, external_ip]
+| search site_id=$site_id$ message=$message$ 
+| where (tracking_freq="monitored") AND (site_id &gt; 5000)
+| stats count by site_id, event_id, customer, message
+| sort count DESC</query>
+          <earliest>$earliest$</earliest>
+          <latest>$latest$</latest>
+        </search>
+        <option name="count">25</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <option name="wrap">false</option>
+      </table>
+    </panel>
+  </row>
+</form>
