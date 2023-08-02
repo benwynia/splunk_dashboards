@@ -1,0 +1,467 @@
+<form version="1.1">
+  <label>CS: Site Info</label>
+  <description>This dashboard provides opportunity, location, glass hardware, customer site, sensor, and network information for our customer installations.</description>
+  <fieldset submitButton="false">
+    <input type="dropdown" token="site_id">
+      <label>Select a Site</label>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>site_id</fieldForValue>
+      <search>
+        <query>|inputlookup customer_site_info.csv
+|eval label=site_id.": ".customer
+|sort site_id ASC</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+  </fieldset>
+  <row>
+    <panel id="header_opptyinfo">
+      <html>
+                <style>
+                    #header_opptyinfo .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Opportunity Information</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Basic Opportunity Information</title>
+        <search>
+          <query>index=sfdc_prd source="sfdc_object://Opportunity_sfdc_read_production_Prod_Opportunity" earliest=-10y latest=now()
+[|inputlookup customer_site_info.csv
+|search site_id=$site_id$
+|table Opportunity_ID__c]
+|head 1
+|table Opportunity_ID__c, Name, Market_Sub_Segment__c, CSM_Stage__c, CloseDate, Occupancy_Date__c, Install_Status__c, Service_Date__c, Relevant_NPI__c
+|transpose 0
+|rename "column" as Field, "row 1" as Value</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Geographical Information</title>
+        <search>
+          <query>index=sfdc_prd source="sfdc_object://Opportunity_sfdc_read_production_Prod_Opportunity" earliest=-10y latest=now()
+[|inputlookup customer_site_info.csv
+|search site_id=$site_id$
+|table Opportunity_ID__c]
+|head 1
+|table Support_Region__c, Project_Full_Address__c, GeoLocation__Latitude__s, GeoLocation__Longitude__s
+|transpose 0
+|rename "column" as Field, "row 1" as Value</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Glass/Hardware Information</title>
+        <search>
+          <query>index=sfdc_prd source="sfdc_object://Opportunity_sfdc_read_production_Prod_Opportunity" earliest=-10y latest=now()
+[|inputlookup customer_site_info.csv
+|search site_id=$site_id$
+|table Opportunity_ID__c]
+|head 1
+|table Total_Number_of_IGU__c, Project_Glass_Quantity__c, IGU_GEN__c, IGU_Pigtail_Style__c, Glazing_System_Manufacturer__c, Glazing_System_Method__c, Glazing_System_Model__c, CHW_Warranty_Date__c, IGU_Warranty_Date__c
+|transpose 0
+|rename "column" as Field, "row 1" as Value</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_siteinfo">
+      <html>
+                <style>
+                    #header_siteinfo .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Customer Site Information</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Site Information</title>
+        <search>
+          <query>index=sfdc_prd source="sfdc_object://Building_Account__c_sfdc_read_production_Prod_Customer_Site" earliest=-10y latest=now()
+[|inputlookup customer_site_info.csv |search site_id=$site_id$ |table Building_Location_ID__c]
+|head 1
+|table Location_Type__c, Building_Location_ID__c, Name, Location_Status__c, Street__c, City__c, Site_State__c, Country__c, LastModifiedDate
+|transpose 0
+|rename "column" as Field, "row 1" as Value</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel>
+      <viz type="leaflet_maps_app.maps-plus">
+        <title>Site Location Map</title>
+        <search>
+          <query>| inputlookup site_info.csv where site_id=$site_id$
+| rename customer as customerName
+| table latitude, longitude
+| geostats latfield=latitude longfield=longitude</query>
+          <earliest>-30d@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="height">369</option>
+        <option name="leaflet_maps_app.maps-plus.allPopups">0</option>
+        <option name="leaflet_maps_app.maps-plus.animate">1</option>
+        <option name="leaflet_maps_app.maps-plus.autoFitAndZoom">1</option>
+        <option name="leaflet_maps_app.maps-plus.autoFitAndZoomDelay">500</option>
+        <option name="leaflet_maps_app.maps-plus.bingMaps">0</option>
+        <option name="leaflet_maps_app.maps-plus.bingMapsLabelLanguage">en-US</option>
+        <option name="leaflet_maps_app.maps-plus.bingMapsTileLayer">CanvasLight</option>
+        <option name="leaflet_maps_app.maps-plus.cluster">0</option>
+        <option name="leaflet_maps_app.maps-plus.contextMenu">1</option>
+        <option name="leaflet_maps_app.maps-plus.criticalThreshold">80</option>
+        <option name="leaflet_maps_app.maps-plus.defaultHeight">600</option>
+        <option name="leaflet_maps_app.maps-plus.disableClusteringAtZoom">0</option>
+        <option name="leaflet_maps_app.maps-plus.drilldown">0</option>
+        <option name="leaflet_maps_app.maps-plus.drilldownAction">dblclick</option>
+        <option name="leaflet_maps_app.maps-plus.fullScreen">0</option>
+        <option name="leaflet_maps_app.maps-plus.googlePlacesPosition">topleft</option>
+        <option name="leaflet_maps_app.maps-plus.googlePlacesSearch">0</option>
+        <option name="leaflet_maps_app.maps-plus.googlePlacesZoomLevel">12</option>
+        <option name="leaflet_maps_app.maps-plus.heatmapBlur">15</option>
+        <option name="leaflet_maps_app.maps-plus.heatmapColorGradient">{"0.4":"blue","0.6":"cyan","0.7":"lime","0.8":"yellow","1":"red"}</option>
+        <option name="leaflet_maps_app.maps-plus.heatmapEnable">0</option>
+        <option name="leaflet_maps_app.maps-plus.heatmapMinOpacity">1.0</option>
+        <option name="leaflet_maps_app.maps-plus.heatmapOnly">0</option>
+        <option name="leaflet_maps_app.maps-plus.heatmapRadius">25</option>
+        <option name="leaflet_maps_app.maps-plus.i18nLanguage">en</option>
+        <option name="leaflet_maps_app.maps-plus.layerControl">1</option>
+        <option name="leaflet_maps_app.maps-plus.layerControlCollapsed">1</option>
+        <option name="leaflet_maps_app.maps-plus.mapCenterLat">39.50</option>
+        <option name="leaflet_maps_app.maps-plus.mapCenterLon">-98.35</option>
+        <option name="leaflet_maps_app.maps-plus.mapCenterZoom">7</option>
+        <option name="leaflet_maps_app.maps-plus.mapTile">http://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}.png</option>
+        <option name="leaflet_maps_app.maps-plus.maxClusterRadius">80</option>
+        <option name="leaflet_maps_app.maps-plus.maxSpiderfySize">100</option>
+        <option name="leaflet_maps_app.maps-plus.maxZoom">19</option>
+        <option name="leaflet_maps_app.maps-plus.measureActiveColor">#00ff00</option>
+        <option name="leaflet_maps_app.maps-plus.measureCompletedColor">#0066ff</option>
+        <option name="leaflet_maps_app.maps-plus.measureIconPosition">topright</option>
+        <option name="leaflet_maps_app.maps-plus.measureLocalization">en</option>
+        <option name="leaflet_maps_app.maps-plus.measurePrimaryAreaUnit">acres</option>
+        <option name="leaflet_maps_app.maps-plus.measurePrimaryLengthUnit">feet</option>
+        <option name="leaflet_maps_app.maps-plus.measureSecondaryAreaUnit">sqmiles</option>
+        <option name="leaflet_maps_app.maps-plus.measureSecondaryLengthUnit">miles</option>
+        <option name="leaflet_maps_app.maps-plus.measureTool">0</option>
+        <option name="leaflet_maps_app.maps-plus.minZoom">6</option>
+        <option name="leaflet_maps_app.maps-plus.multiplePopups">0</option>
+        <option name="leaflet_maps_app.maps-plus.pathColorList">#0003F0,#D43C29,darkgreen,0xe2d400,darkred,#23A378</option>
+        <option name="leaflet_maps_app.maps-plus.pathSplitInterval">60</option>
+        <option name="leaflet_maps_app.maps-plus.pathSplits">0</option>
+        <option name="leaflet_maps_app.maps-plus.permanentTooltip">1</option>
+        <option name="leaflet_maps_app.maps-plus.playbackSpeed">100</option>
+        <option name="leaflet_maps_app.maps-plus.playbackTickLength">50</option>
+        <option name="leaflet_maps_app.maps-plus.rangeOneBgColor">#B5E28C</option>
+        <option name="leaflet_maps_app.maps-plus.rangeOneFgColor">#6ECC39</option>
+        <option name="leaflet_maps_app.maps-plus.rangeThreeBgColor">#FD9C73</option>
+        <option name="leaflet_maps_app.maps-plus.rangeThreeFgColor">#F18017</option>
+        <option name="leaflet_maps_app.maps-plus.rangeTwoBgColor">#F1D357</option>
+        <option name="leaflet_maps_app.maps-plus.rangeTwoFgColor">#F0C20C</option>
+        <option name="leaflet_maps_app.maps-plus.refreshInterval">0</option>
+        <option name="leaflet_maps_app.maps-plus.renderer">svg</option>
+        <option name="leaflet_maps_app.maps-plus.scrollWheelZoom">1</option>
+        <option name="leaflet_maps_app.maps-plus.showPathLines">0</option>
+        <option name="leaflet_maps_app.maps-plus.showPlayback">0</option>
+        <option name="leaflet_maps_app.maps-plus.showPlaybackDateControl">1</option>
+        <option name="leaflet_maps_app.maps-plus.showPlaybackPlayControl">1</option>
+        <option name="leaflet_maps_app.maps-plus.showPlaybackSliderControl">1</option>
+        <option name="leaflet_maps_app.maps-plus.showProgress">1</option>
+        <option name="leaflet_maps_app.maps-plus.singleMarkerMode">0</option>
+        <option name="leaflet_maps_app.maps-plus.spiderfyDistanceMultiplier">1</option>
+        <option name="leaflet_maps_app.maps-plus.splunkVersionCheck">0</option>
+        <option name="leaflet_maps_app.maps-plus.stickyTooltip">1</option>
+        <option name="leaflet_maps_app.maps-plus.warningThreshold">55</option>
+        <option name="refresh.display">progressbar</option>
+      </viz>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_systeminfo">
+      <html>
+                <style>
+                    #header_systeminfo .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">System Information</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Master Controller Configuration</title>
+        <search>
+          <query>| inputlookup site_info.csv where site_id=$site_id$
+|lookup site_config_platform_version.csv site_id OUTPUTNEW current_software_version
+|table site_id, current_software_version, system_type, cpu_type, mac_address, external_ip, server_port, time_zone, tracking_freq, utc_offset</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Site Topology</title>
+        <search>
+          <query>|inputlookup _periscope_views_wc_config_latest.csv
+|append [|inputlookup _periscope_views_denali_wc_config_latest.csv]
+|search site_id=$site_id$
+|rex field=id "DEV(?P&lt;dev&gt;\d+).WC(?P&lt;wc&gt;\d+)"
+|stats dc(dev) as "CP Count", dc(id) as "WC Count", dc(zone_id) as "Zone Count"</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show2$">
+      <table>
+        <title>Ring Sensor Information</title>
+        <search>
+          <query>| dbxquery query="SELECT * FROM customer_sites.rs_config
+WHERE site_id='$site_id$';" connection="appserver"
+|table id, site_id, name, version, mac, url, location, service, port, creation_date</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show2">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show2"></unset>
+            </condition>
+          </progress>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show$">
+      <table>
+        <title>Photosensor Information</title>
+        <search>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show"></unset>
+            </condition>
+          </progress>
+          <query>| dbxquery query="SELECT * FROM customer_sites.sensor_config
+WHERE site_id='$site_id$' AND is_latest='1';" connection="appserver"
+|table site_id, address, is, loc, name, creation_date, is_latest, BrightToDarkWait,DeltaThreshold,LongWindowSize, ShortWindowSize, ReadInterval,azimuth</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_conninfo">
+      <html>
+                <style>
+                    #header_conninfo .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Connection Information</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>MC Connection Information</title>
+        <search>
+          <query>index=sfdc_prd source="sfdc_object://Network_Connections__c_sfdc_read_production_Prod_Network_Connection" earliest=-10y latest=now()
+[search index=sfdc_prd source="sfdc_object://Building_Account__c_sfdc_read_production_Prod_Customer_Site" earliest=-10y latest=now()
+[|inputlookup customer_site_info.csv |search site_id=$site_id$ |table Building_Location_ID__c]
+|head 1
+|rename Id as Customer_Site__c 
+|table Customer_Site__c]
+|search Active__c="true"
+|rename Id as Network_Connection__c 
+|head 1
+|table Connection_Type__c, External_Address__c, DNS__c, Master_Controller_IP_Address__c, Master_Controller_IP_Address_Type__c, Ring_sensor_IP_address__c, NTP__c, Outbound_Connection_restricted__c, Panels_Interconnected_Via__c, Notes__c, Active__c
+|transpose
+|rename "column" as Field, "row 1" as Value</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">16</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>Tailscale Connection Information</title>
+        <search>
+          <query>|inputlookup site_info.csv
+|table site_id, customer
+
+|join type=left site_id [search index=tailscale_devices earliest=-5d latest=now()
+|dedup hostname
+|rex field=addresses "'(?&lt;ip_address&gt;\d{1,3}\.\d{1,3}\.\d{1,3}\.\d{1,3})'"
+|rename "clientConnectivity_latency_San Francisco_latencyMs" as SF_latency
+|where like(hostname,"%view%") or like(hostname,"%tintserver%") and !like(hostname,"%Fuzz%") and !like(hostname,"%Chelan%") 
+|rex field=hostname "(?P&lt;site_id&gt;\d+)" 
+|table hostname, site_id, ip_address, lastSeen, user, SF_latency, clientVersion, _time]
+
+|search site_id=$site_id$
+|eval last_online = strptime(lastSeen,"%Y-%m-%dT%H:%M:%S%Z")
+|eval last_online_time=strftime(last_online,"%Y-%m-%d %H:%M:%S")
+|table site_id, customer, hostname, ip_address, last_online_time, user, SF_latency, clientVersion
+|sort last_online_time ASC
+|transpose
+|rename "column" as Field, "row 1" as Value</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show4$">
+      <table>
+        <title>VPN Connection Information</title>
+        <search>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show4">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show4"></unset>
+            </condition>
+          </progress>
+          <query>index=sfdc_prd source="sfdc_object://VPN_Profile__c_sfdc_read_production_Prod_VPN_Profile" earliest=-10y latest=now() [search index=sfdc_prd source="sfdc_object://Network_Connections__c_sfdc_read_production_Prod_Network_Connection" earliest=-10y latest=now()
+[search index=sfdc_prd source="sfdc_object://Building_Account__c_sfdc_read_production_Prod_Customer_Site" earliest=-10y latest=now()
+[|inputlookup customer_site_info.csv |search site_id=$site_id$ |table Building_Location_ID__c]
+|head 1
+|rename Id as Customer_Site__c 
+|table Customer_Site__c]
+|search Active__c="true"
+|rename Id as Network_Connection__c 
+|head 1
+|table Network_Connection__c]
+|head 1
+|table Name, Server_Address__c, Master_Controller_IP_Address__c, VPN_ClientType__c, Notes__c, VPN_Instruction__c, LastModifiedDate
+|transpose 0</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show3$">
+      <table>
+        <title>Port Forwarding Information</title>
+        <search>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show3">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show3"></unset>
+            </condition>
+          </progress>
+          <query>index=sfdc_prd source="sfdc_object://Port_Forwarding__c_sfdc_read_production_Prod_Port_Forwarding" earliest=-10y latest=now() [search index=sfdc_prd source="sfdc_object://Network_Connections__c_sfdc_read_production_Prod_Network_Connection" earliest=-10y latest=now()
+[search index=sfdc_prd source="sfdc_object://Building_Account__c_sfdc_read_production_Prod_Customer_Site" earliest=-10y latest=now()
+[|inputlookup customer_site_info.csv |search site_id=$site_id$ |table Building_Location_ID__c]
+|head 1
+|rename Id as Customer_Site__c 
+|table Customer_Site__c]
+|search Active__c="true"
+|head 1
+|rename Id as Network_Connection__c 
+|table Network_Connection__c]
+|dedup Id
+|table Internal_Port__c, External_Port__c, LastModifiedDate</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show5$">
+      <table>
+        <title>Site Communications Outages (Last 30 Days)</title>
+        <search>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show5">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show5"></unset>
+            </condition>
+          </progress>
+          <query>index=lasthb
+|where client_id=$site_id$
+| eval downsince=strftime(last_hb_time, "%m/%d/%y %H:%M:%S")
+| eval downtime=(_time-last_hb_time)/3600
+| eval downdays = tostring(downtime*3600, "duration")
+| eval downtimeMin=(_time-last_hb_time)/60
+| eval duration2=replace(downdays,"((\d+)\+)*(\d+):(\d+):(\d*\.\d*)","\2 Days \3 Hrs \4 Mins")
+| sort by - _time
+| eval currentStatus=if (_time &lt; now()-900, "Connection Recovered", "Currently Down")
+| eval downtimeMin=round(downtimeMin)
+| dedup customer, downsince
+| sort by customer
+| table client_id, customer, downsince, downtimeMin, duration2, currentStatus
+| rename client_id as "Site Id" customer as Customer downsince as "Outage Start" downtimeMin as "Downtime in Min (rounded)" duration2 as Duration currentStatus as "Outage Status"</query>
+          <earliest>-30d@d</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>
