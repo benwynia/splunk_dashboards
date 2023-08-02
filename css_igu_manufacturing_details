@@ -1,0 +1,312 @@
+<form version="1.1" theme="dark">
+  <label>IGU Manufacturing Details (MES)</label>
+  <description>Give it 20-30 seconds after selecting an opportunity to execute the database query before the "Select a Window" populates.</description>
+  <fieldset submitButton="false">
+    <input type="dropdown" token="OpportunityId">
+      <label>Select Opportunity</label>
+      <fieldForLabel>label</fieldForLabel>
+      <fieldForValue>Opportunity_ID__c</fieldForValue>
+      <search>
+        <query>`sfdc_opportunities`
+|search Install_Status__c IN ("Active","Service")
+|eval label="(".Opportunity_ID__c.") ".Opportunity_Name
+|table label, Opportunity_ID__c, Opportunity_Name, Opportunity__c, Install_Status__c, Project_Manager__c, Service_Date__c, State
+|sort Opportunity_Name ASC</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+    </input>
+    <input type="dropdown" token="ORDER_NUMBER" searchWhenChanged="true">
+      <label>Filter by Order</label>
+      <choice value="*">All</choice>
+      <prefix>"</prefix>
+      <suffix>"</suffix>
+      <fieldForLabel>ORDER_NUMBER</fieldForLabel>
+      <fieldForValue>ORDER_NUMBER</fieldForValue>
+      <search>
+        <query>|loadjob $lites$
+|dedup ORDER_NUMBER
+|table ORDER_NUMBER
+|sort ORDER_NUMBER ASC</query>
+        <earliest>-24h@h</earliest>
+        <latest>now</latest>
+      </search>
+      <default>*</default>
+    </input>
+  </fieldset>
+  <row>
+    <panel id="header_alllites">
+      <html>
+                <style>
+                    #header_alllites .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">All Windows for Opportunity</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <chart>
+        <title>Shipment Records and Cumulative IGUs Shipped</title>
+        <search>
+          <query>|loadjob $lites$
+|search ORDER_NUMBER=$ORDER_NUMBER$
+|rex field=DATESHIPPED "(?&lt;date_shipped&gt;\d{4}-\d{2}-\d{2})"
+|stats count by date_shipped
+|eval _time = strptime(date_shipped, "%Y-%m-%d")
+|stats sum(count) as shipment by _time
+| streamstats sum(shipment) as cumulative_shipped</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="charting.axisY2.enabled">1</option>
+        <option name="charting.chart">column</option>
+        <option name="charting.chart.overlayFields">cumulative_shipped</option>
+        <option name="charting.chart.showDataLabels">all</option>
+        <option name="charting.drilldown">none</option>
+        <option name="charting.layout.splitSeries">0</option>
+        <option name="height">454.965</option>
+        <option name="refresh.display">progressbar</option>
+      </chart>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <search>
+          <query>|loadjob $lites$
+|search ORDER_NUMBER=$ORDER_NUMBER$
+|stats count by ORDER_NUMBER LITEPOSITION</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>All IGU Records</title>
+        <search>
+          <done>
+            <set token="lites">$job.sid$</set>
+          </done>
+          <query>|dbxquery connection="Snowflake" query="SELECT * FROM "IB_ENRICHED_PROD"."CONS"."VW_PIGTAILHEXMES_V" WHERE SFDCOPPORTUNITYID='$OpportunityId$'"
+|search ORDER_NUMBER=$ORDER_NUMBER$</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+          <sampleRatio>1</sampleRatio>
+        </search>
+        <option name="count">10</option>
+        <option name="dataOverlayMode">none</option>
+        <option name="drilldown">none</option>
+        <option name="percentagesRow">false</option>
+        <option name="rowNumbers">false</option>
+        <option name="totalsRow">false</option>
+        <option name="wrap">true</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel id="header_details">
+      <html>
+                <style>
+                    #header_details .panel-body.html {
+                        background-color: #8CA689;
+                    }
+                </style>
+                <h1 style="color:black;">Individual Lite Details</h1>
+            </html>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <input type="dropdown" token="lite_id">
+        <label>Select a Window</label>
+        <prefix>"</prefix>
+        <suffix>"</suffix>
+        <fieldForLabel>lite_id</fieldForLabel>
+        <fieldForValue>LITEID</fieldForValue>
+        <search>
+          <query>|loadjob $lites$
+|rex field=LITEID "(?&lt;first&gt;\d{5})`(?&lt;second&gt;\d{1,4})`(?&lt;third&gt;\d{1,4})`(?&lt;fourth&gt;\d{1,4})`(?&lt;fifth&gt;\d{1,2})"
+|eval first=substr("00000".first,-5)
+|eval second=substr("00000".second,-4)
+|eval third=substr("00000".third,-4)
+|eval fourth=substr("00000".fourth,-4)
+|eval fifth=substr("00000".fifth,-2)
+|eval lite_id=first."`".second."`".third."`".fourth."`".fifth
+|search ORDER_NUMBER=$ORDER_NUMBER$
+|table lite_id, LITEID</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+      </input>
+      <table>
+        <title>Order Information</title>
+        <search>
+          <query>|loadjob $lites$
+|search LITEID=$lite_id$
+|table SFDCCUSTOMERREFERENCE, SFDCOPPORTUNITYID, ORDERTYPENAME, ORDERSTATUSNAME, 	LITEPOSITION, ORDER_NUMBER
+|transpose 0
+|rename "column" as Field, "row 1" as Value</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+    <panel>
+      <table>
+        <title>IGU Make Information</title>
+        <search>
+          <query>|loadjob $lites$
+|search LITEID=$lite_id$
+|rex field=LITEID "(?&lt;first&gt;\d{5})`(?&lt;second&gt;\d{1,4})`(?&lt;third&gt;\d{1,4})`(?&lt;fourth&gt;\d{1,4})`(?&lt;fifth&gt;\d{1,2})"
+```Removes leading zeros |rex field=igu_lite_id "(?&lt;first&gt;\d{5})`(?&lt;second&gt;\d{1,4})`(?&lt;third&gt;\d{1,4})`(?&lt;fourth&gt;\d{1,4})`(?&lt;fifth&gt;\d{1,2})"
+|eval first=ltrim(substr("00000".first,-5),"0")
+|eval second=ltrim(substr("00000".second,-4),"0")
+|eval third=ltrim(substr("00000".third,-4),"0")
+|eval fourth=ltrim(substr("00000".fourth,-4),"0")
+|eval fifth=substr(fifth,-1)
+|eval lite_id=first."`".second."`".third."`".fourth."`".fifth```
+|eval first=substr("00000".first,-5)
+|eval second=substr("00000".second,-4)
+|eval third=substr("00000".third,-4)
+|eval fourth=substr("00000".fourth,-4)
+|eval fifth=substr("00000".fifth,-2)
+|eval lite_id=first."`".second."`".third."`".fourth."`".fifth
+|table PRODUCTDESC, PRODUCTNAME, LITEID, lite_id, SQFT, MATE, GEN, GLASSPRODUCTID, PRODUCTID, VW_BONUMBER, VW_OAT, VW_LITEHEIGHT, VW_LITEWIDTH, EFFECTIVEBBIN, VW_H1, VW_H2, VW_SHAPE, VW_CAPTUBE, VW_COATRECIP_PLAN, VW_OPTICALDENSITY, VW_TAKTTIME, ORIGINALORDERQTY
+|transpose 0
+|rename "column" as Field, "row 1" as Value</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="count">20</option>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Key Manufacturing Dates</title>
+        <search>
+          <query>|loadjob $lites$
+|search LITEID=$lite_id$
+|table DATECUT, DATETEMPERED, DATECOATERUNLOAD, DATEPOSTSCRIBED, DATESECSEAL, DATECYCLED, DATEFINALQA, DATERTS, DATESHIPPED,</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+        <format type="number" field="DATESECSEAL"></format>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Lite 1 Information</title>
+        <search>
+          <query>|loadjob $lites$
+|search LITEID=$lite_id$
+|table VW_LITE1GLASSTYPE, VW_LITE1THICKNESS, VW_LITE1TREATMENT, VW_LITE1PARTNUMBER</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Spacer 1 Information</title>
+        <search>
+          <query>|loadjob $lites$
+|search LITEID=$lite_id$
+|table VW_SPACER1THICKNESS,VW_SPACERHEIGHT1, VW_SPACER1COLOR, VW_SPACER1TYPE
+|rename "column" as Field, "row 1" as Value</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel>
+      <table>
+        <title>Lite 2 Information</title>
+        <search>
+          <query>|loadjob $lites$
+|search LITEID=$lite_id$
+|table VW_LITE2GLASSTYPE, VW_LITE2THICKNESS, VW_LITE2TREATMENT, VW_LITE2PARTNUMBER</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show1$">
+      <table>
+        <title>Spacer 2 Information</title>
+        <search>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show1">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show1"></unset>
+            </condition>
+          </progress>
+          <query>|loadjob $lites$
+|search LITEID=$lite_id$
+|where isnotnull(VW_SPACER2TYPE)
+|table VW_SPACER2THICKNESS, VW_SPACERHEIGHT2, VW_SPACER2COLOR, VW_SPACER2TYPE</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+  <row>
+    <panel depends="$panel_show$">
+      <table>
+        <title>Lite 3 Information</title>
+        <search>
+          <progress>
+            <condition match="'job.resultCount' &gt; 0">
+              <set token="panel_show">true</set>
+            </condition>
+            <condition>
+              <unset token="panel_show"></unset>
+            </condition>
+          </progress>
+          <query>|loadjob $lites$
+|search LITEID=$lite_id$
+|where isnotnull(VW_LITE3GLASSTYPE)
+|table VW_LITE3GLASSTYPE, VW_LITE3THICKNESS, VW_LITE3TREATMENT, VW_LITE3PARTNUMBER,</query>
+          <earliest>-24h@h</earliest>
+          <latest>now</latest>
+        </search>
+        <option name="drilldown">none</option>
+        <option name="refresh.display">progressbar</option>
+      </table>
+    </panel>
+  </row>
+</form>
